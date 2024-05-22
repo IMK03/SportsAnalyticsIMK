@@ -1,0 +1,117 @@
+install.packages("hoopR")
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(ggrepel)
+library(tidyr)
+#tictoc::tic()
+progressr::with_progress({
+  nba_pbp <- hoopR::load_nba_pbp(2023)
+})
+#tictoc::toc()
+View(nba_pbp)
+#when do coaches call their timeouts? how are timeouts best utilized? How effective are coaches with using their timeouts and stopping runs?
+#timeouts = subset(nba_pbp,type_text %in% c("Full Timeout", "End Game", "End Period"))
+#View(timeouts)
+
+
+# Isolate all timeout plays and start of games
+timeouts <- nba_pbp %>%
+  filter(
+    type_text %in% c("Full Timeout", "End Period") |
+      (type_text == "Jumpball" & clock_display_value == "12:00")
+  ) %>%
+  arrange(game_id, game_play_number)
+
+# Calculate time and score differences for each timeout
+timeouts <- timeouts %>%
+  group_by(game_id) %>%
+  mutate(
+    prev_home_score = lag(home_score, order_by = sequence_number, default = 0),
+    prev_away_score = lag(away_score, order_by = sequence_number, default = 0),
+    prev_start_half_seconds_remaining = lag(start_half_seconds_remaining, order_by = sequence_number, default = 12 * 60),
+    prev_time_diff = prev_start_half_seconds_remaining - start_half_seconds_remaining,
+    home_score_diff = home_score - prev_home_score,
+    away_score_diff = away_score - prev_away_score
+  ) %>%
+  ungroup()
+
+# Set run_length and run_points to NA for jumpballs and end periods
+timeouts <- timeouts %>%
+  mutate(
+    prev_time_diff = ifelse(type_text %in% c("Jumpball", "End Period"), NA, prev_time_diff),
+    home_score_diff = ifelse(type_text %in% c("Jumpball", "End Period"), NA, home_score_diff),
+    away_score_diff = ifelse(type_text %in% c("Jumpball", "End Period"), NA, away_score_diff)
+  )
+
+# Remove entries in timeouts where time_diff is NA, negative, or with specific team_ids
+timeouts <- timeouts %>%
+  mutate(
+    team_id = ifelse(home_timeout_called, home_team_id, away_team_id),
+    team_name = ifelse(home_timeout_called, home_team_name, away_team_name)
+  ) %>%
+  filter(!is.na(prev_time_diff) & prev_time_diff > 0 & !(team_id %in% c(111353, 112151)))
+
+
+# Determine pre-timeout run differential
+timeouts <- timeouts %>%
+  mutate(
+    pre_timeout_run = ifelse(home_timeout_called, away_score_diff - home_score_diff, home_score_diff - away_score_diff)
+  )
+#something about final timeouts of games
+
+# Calculate post-timeout performance using next row's time_diff
+timeouts <- timeouts %>%
+  group_by(game_id) %>%
+  mutate(
+    next_home_score = lead(home_score, order_by = sequence_number),
+    next_away_score = lead(away_score, order_by = sequence_number),
+    next_time_diff = lead(prev_time_diff, order_by = sequence_number),
+    post_time_diff = next_time_diff,
+    post_home_score_diff = next_home_score - home_score,
+    post_away_score_diff = next_away_score - away_score
+  ) %>%
+  ungroup()
+
+# Filter out invalid entries for post-timeout analysis
+timeouts <- timeouts %>%
+  filter(!is.na(post_time_diff) & post_time_diff > 0)
+
+# Determine post-timeout run differential
+timeouts <- timeouts %>%
+  mutate(
+    post_timeout_run = ifelse(home_timeout_called, post_away_score_diff - post_home_score_diff, post_home_score_diff - post_away_score_diff)
+  )
+
+
+
+# Combine timeout results for both home and away games
+timeouts_combined <- timeouts %>%
+  mutate(
+    team_id = ifelse(home_timeout_called, home_team_id, away_team_id),
+    team_name = ifelse(home_timeout_called, home_team_name, away_team_name)
+  ) %>%
+  select(game_id, team_id, team_name, pre_timeout_run, post_timeout_run)
+
+# Calculate average pre_timeout_run and post_timeout_run for each team
+team_averages <- timeouts_combined %>%
+  group_by(team_id, team_name) %>%
+  summarise(
+    avg_pre_timeout_run = mean(pre_timeout_run, na.rm = TRUE),
+    avg_post_timeout_run = mean(post_timeout_run, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Create the scatter plot with specified axis limits
+ggplot(team_averages, aes(x = avg_pre_timeout_run, y = avg_post_timeout_run, label = team_name)) +
+  geom_point() +
+  geom_text_repel(max.overlaps = 100) +
+  labs(
+    title = "NBA Timeout Efficiency",
+    x = "Average Pre-Timeout Point Differential",
+    y = "Average Post-Timeout Point Differential"
+  ) +
+  xlim(-0.4, 1.2) +
+  ylim(-0.3, 1.8) +
+  theme_minimal()
