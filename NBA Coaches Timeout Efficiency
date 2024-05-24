@@ -15,6 +15,35 @@ View(nba_pbp)
 #timeouts = subset(nba_pbp,type_text %in% c("Full Timeout", "End Game", "End Period"))
 #View(timeouts)
 
+install.packages("hoopR")
+install.packages("zoo")
+install.packages("slickR")
+install.packages("rsvg")
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(ggrepel)
+library(tidyr)
+library(zoo)
+library(ggimage)
+library(rsvg)
+#library(png)
+
+tictoc::tic()
+progressr::with_progress({
+  nba_pbp <- hoopR::load_nba_pbp(2023)
+})
+View(nba_pbp)
+
+progressr::with_progress({
+  logos <- slickR::nba_team_logo
+})
+#when do coaches call their timeouts? how are timeouts best utilized? How effective are coaches with using their timeouts and stopping runs?
+#timeouts = subset(nba_pbp,type_text %in% c("Full Timeout", "End Game", "End Period"))
+#View(timeouts)
+
+
 
 # Isolate all timeout plays and start of games
 timeouts <- nba_pbp %>%
@@ -22,7 +51,31 @@ timeouts <- nba_pbp %>%
     type_text %in% c("Full Timeout", "End Period") |
       (type_text == "Jumpball" & clock_display_value == "12:00")
   ) %>%
-  arrange(game_id, game_play_number)
+  arrange(game_id, sequence_number)
+
+# Function to identify the team that called the timeout
+get_timeout_team <- function(text, home_team_mascot, away_team_mascot) {
+  if (grepl(home_team_mascot, text)) {
+    return("home")
+  } else if (grepl(away_team_mascot, text)) {
+    return("away")
+  } else {
+    return(NA)
+  }
+}
+
+# Apply the function to identify the timeout team
+timeouts <- timeouts %>%
+  rowwise() %>%
+  mutate(timeout_team = get_timeout_team(text, home_team_mascot, away_team_mascot)) %>%
+  ungroup()
+
+# Assign team_id and team_name based on the timeout team
+timeouts <- timeouts %>%
+  mutate(
+    team_id = ifelse(timeout_team == "home", home_team_id, away_team_id),
+    team_name = ifelse(timeout_team == "home", home_team_name, away_team_name)
+  )
 
 # Calculate time and score differences for each timeout
 timeouts <- timeouts %>%
@@ -30,88 +83,109 @@ timeouts <- timeouts %>%
   mutate(
     prev_home_score = lag(home_score, order_by = sequence_number, default = 0),
     prev_away_score = lag(away_score, order_by = sequence_number, default = 0),
-    prev_start_half_seconds_remaining = lag(start_half_seconds_remaining, order_by = sequence_number, default = 12 * 60),
-    prev_time_diff = prev_start_half_seconds_remaining - start_half_seconds_remaining,
-    home_score_diff = home_score - prev_home_score,
-    away_score_diff = away_score - prev_away_score
+    prev_start_half_seconds_remaining = ifelse(start_half_seconds_remaining == 0 & qtr == 2, end_half_seconds_remaining, lag(start_half_seconds_remaining, order_by = sequence_number, default = 12 * 60)),
+    prev_time_diff = abs(ifelse(type_text == "End Period", 0, prev_start_half_seconds_remaining - start_half_seconds_remaining)),
+    home_score_diff = ifelse(type_text == "End Period", 0, home_score - prev_home_score),
+    away_score_diff = ifelse(type_text == "End Period", 0, away_score - prev_away_score)
   ) %>%
   ungroup()
 
-# Set run_length and run_points to NA for jumpballs and end periods
+# Set run_length and run_points to NA for jumpballs
 timeouts <- timeouts %>%
   mutate(
-    prev_time_diff = ifelse(type_text %in% c("Jumpball", "End Period"), NA, prev_time_diff),
-    home_score_diff = ifelse(type_text %in% c("Jumpball", "End Period"), NA, home_score_diff),
-    away_score_diff = ifelse(type_text %in% c("Jumpball", "End Period"), NA, away_score_diff)
+    prev_time_diff = ifelse(type_text == "Jumpball", NA, prev_time_diff),
+    home_score_diff = ifelse(type_text == "Jumpball", NA, home_score_diff),
+    away_score_diff = ifelse(type_text == "Jumpball", NA, away_score_diff)
   )
 
 # Remove entries in timeouts where time_diff is NA, negative, or with specific team_ids
 timeouts <- timeouts %>%
-  mutate(
-    team_id = ifelse(home_timeout_called, home_team_id, away_team_id),
-    team_name = ifelse(home_timeout_called, home_team_name, away_team_name)
-  ) %>%
-  filter(!is.na(prev_time_diff) & prev_time_diff > 0 & !(team_id %in% c(111353, 112151)))
-
+  filter(!is.na(prev_time_diff) & !(team_id %in% c(111353, 112151)))
 
 # Determine pre-timeout run differential
 timeouts <- timeouts %>%
   mutate(
-    pre_timeout_run = ifelse(home_timeout_called, away_score_diff - home_score_diff, home_score_diff - away_score_diff)
+    pre_timeout_run = ifelse(timeout_team == "home", home_score_diff - away_score_diff, away_score_diff - home_score_diff)
   )
-#something about final timeouts of games
 
-# Calculate post-timeout performance using next row's time_diff
+# Calculate post-timeout performance
 timeouts <- timeouts %>%
   group_by(game_id) %>%
   mutate(
     next_home_score = lead(home_score, order_by = sequence_number),
     next_away_score = lead(away_score, order_by = sequence_number),
-    next_time_diff = lead(prev_time_diff, order_by = sequence_number),
-    post_time_diff = next_time_diff,
-    post_home_score_diff = next_home_score - home_score,
-    post_away_score_diff = next_away_score - away_score
+    next_start_half_seconds_remaining = lead(start_half_seconds_remaining, order_by = sequence_number),
+    post_time_diff = abs(ifelse(type_text == "End Period", 0, start_half_seconds_remaining - next_start_half_seconds_remaining)),
+    post_home_score_diff = ifelse(type_text == "End Period", 0, next_home_score - home_score),
+    post_away_score_diff = ifelse(type_text == "End Period", 0, next_away_score - away_score),
+    post_timeout_run = ifelse(timeout_team == "home", post_home_score_diff - post_away_score_diff, post_away_score_diff - post_home_score_diff)
   ) %>%
   ungroup()
 
-# Filter out invalid entries for post-timeout analysis
-timeouts <- timeouts %>%
-  filter(!is.na(post_time_diff) & post_time_diff > 0)
+timeouts <- timeouts %>% 
+  filter(!is.na(timeout_team))
+#could adjust this to x amount of minutes pre/post timeout, or x number of possessions but runs come in all lengths, so it could be self-correcting
 
-# Determine post-timeout run differential
-timeouts <- timeouts %>%
-  mutate(
-    post_timeout_run = ifelse(home_timeout_called, post_away_score_diff - post_home_score_diff, post_home_score_diff - post_away_score_diff)
-  )
-
-
-
-# Combine timeout results for both home and away games
-timeouts_combined <- timeouts %>%
-  mutate(
-    team_id = ifelse(home_timeout_called, home_team_id, away_team_id),
-    team_name = ifelse(home_timeout_called, home_team_name, away_team_name)
-  ) %>%
-  select(game_id, team_id, team_name, pre_timeout_run, post_timeout_run)
+#LA = clippers, Los Angeles = Lakers
 
 # Calculate average pre_timeout_run and post_timeout_run for each team
-team_averages <- timeouts_combined %>%
+team_averages <- timeouts %>%
   group_by(team_id, team_name) %>%
-  summarise(
+  summarize(
     avg_pre_timeout_run = mean(pre_timeout_run, na.rm = TRUE),
     avg_post_timeout_run = mean(post_timeout_run, na.rm = TRUE)
   ) %>%
   ungroup()
 
-# Create the scatter plot with specified axis limits
-ggplot(team_averages, aes(x = avg_pre_timeout_run, y = avg_post_timeout_run, label = team_name)) +
-  geom_point() +
-  geom_text_repel(max.overlaps = 100) +
+# Calculate mean values for pre-timeout and post-timeout runs
+avg_pre <- mean(team_averages$avg_pre_timeout_run, na.rm = TRUE)
+avg_post <- mean(team_averages$avg_post_timeout_run, na.rm = TRUE)
+
+# Function to categorize each point into quadrants based on pre and post timeout runs
+categorize_quadrant <- function(x, y, avg_pre, avg_post) {
+  quadrant <- character(length(x))  # Initialize a character vector to store quadrant labels
+  
+  for (i in seq_along(x)) {
+    if (x[i] > avg_pre & y[i] > avg_post) {
+      quadrant[i] <- "Momentum Master"
+    } else if (x[i] < avg_pre & y[i] < avg_post) {
+      quadrant[i] <- "Momentum Amateur"
+    } else if (x[i] > avg_pre & y[i] < avg_post) {
+      quadrant[i] <- "Momentum Stopper"
+    } else if (x[i] < avg_pre & y[i] > avg_post) {
+      quadrant[i] <- "Momentum Creator"
+    } else {
+      quadrant[i] <- "Other"
+    }
+  }
+  
+  return(quadrant)
+}
+
+# Categorize each point into quadrants
+team_averages <- team_averages %>%
+  mutate(quadrant = categorize_quadrant(avg_pre_timeout_run, avg_post_timeout_run, avg_pre, avg_post))
+
+
+
+# Plot the scatter plot with color-coded points and quadrant titles
+ggplot(team_averages, aes(x = avg_pre_timeout_run, y = avg_post_timeout_run, color = quadrant)) +
+  geom_point(size = 3) + #ggimage for logos when figured out
+  geom_text_repel(aes(label = team_name), max.overlaps = 23) +
+  geom_vline(xintercept = avg_pre, linetype = "dashed") +
+  geom_hline(yintercept = avg_post, linetype = "dashed") +
   labs(
-    title = "NBA Timeout Efficiency",
-    x = "Average Pre-Timeout Point Differential",
-    y = "Average Post-Timeout Point Differential"
+    title = "Average Pre-Timeout Run vs. Post-Timeout Run",
+    x = "Average Pre-Timeout Run Differential",
+    y = "Average Post-Timeout Run Differential",
+    color = "Quadrant"
   ) +
-  xlim(-0.4, 1.2) +
-  ylim(-0.3, 1.8) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed")
+  ) +
+  scale_color_manual(values = c("Momentum Master" = "green", 
+                                "Momentum Amateur" = "red",
+                                "Momentum Stopper" = "blue",
+                                "Momentum Creator" = "orange"))
