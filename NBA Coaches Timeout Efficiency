@@ -1,21 +1,4 @@
 install.packages("hoopR")
-library(tidyverse)
-library(dplyr)
-library(readr)
-library(ggplot2)
-library(ggrepel)
-library(tidyr)
-#tictoc::tic()
-progressr::with_progress({
-  nba_pbp <- hoopR::load_nba_pbp(2023)
-})
-#tictoc::toc()
-View(nba_pbp)
-#when do coaches call their timeouts? how are timeouts best utilized? How effective are coaches with using their timeouts and stopping runs?
-#timeouts = subset(nba_pbp,type_text %in% c("Full Timeout", "End Game", "End Period"))
-#View(timeouts)
-
-install.packages("hoopR")
 install.packages("zoo")
 install.packages("slickR")
 install.packages("rsvg")
@@ -32,13 +15,18 @@ library(rsvg)
 
 tictoc::tic()
 progressr::with_progress({
-  nba_pbp <- hoopR::load_nba_pbp(2023)
+  nba_pbp <- hoopR::load_nba_pbp(2023) #select season
 })
 View(nba_pbp)
 
+tictoc::tic()
 progressr::with_progress({
-  logos <- slickR::nba_team_logo
+  nba_logos <- hoopR::espn_nba_teams()
 })
+
+# progressr::with_progress({
+#   logos <- slickR::nba_team_logo
+# })
 #when do coaches call their timeouts? how are timeouts best utilized? How effective are coaches with using their timeouts and stopping runs?
 #timeouts = subset(nba_pbp,type_text %in% c("Full Timeout", "End Game", "End Period"))
 #View(timeouts)
@@ -137,6 +125,20 @@ team_averages <- timeouts %>%
   ) %>%
   ungroup()
 
+# Assuming nba_logos has columns "team_id" and "logo"
+team_averages <- team_averages %>%
+  inner_join(nba_logos, by = "team_id")
+
+# Rename LA to Clippers and Los Angeles to Lakers
+team_averages <- team_averages %>%
+  mutate(
+    team_name = case_when(
+      team_name == "LA" ~ "Clippers",
+      team_name == "Los Angeles" ~ "Lakers",
+      TRUE ~ team_name
+    )
+  )
+
 # Calculate mean values for pre-timeout and post-timeout runs
 avg_pre <- mean(team_averages$avg_pre_timeout_run, na.rm = TRUE)
 avg_post <- mean(team_averages$avg_post_timeout_run, na.rm = TRUE)
@@ -168,24 +170,26 @@ team_averages <- team_averages %>%
 
 
 
-# Plot the scatter plot with color-coded points and quadrant titles
-ggplot(team_averages, aes(x = avg_pre_timeout_run, y = avg_post_timeout_run, color = quadrant)) +
-  geom_point(size = 3) + #ggimage for logos when figured out
-  geom_text_repel(aes(label = team_name), max.overlaps = 23) +
+# Plot the scatter plot with team logos
+ggplot(team_averages, aes(x = avg_pre_timeout_run, y = avg_post_timeout_run)) +
+  geom_image(aes(image = logo), size = 0.1) +  # Use geom_image to plot team logos
+  #geom_text_repel(aes(label = team_name), max.overlaps = 23) +
   geom_vline(xintercept = avg_pre, linetype = "dashed") +
   geom_hline(yintercept = avg_post, linetype = "dashed") +
   labs(
     title = "Average Pre-Timeout Run vs. Post-Timeout Run",
     x = "Average Pre-Timeout Run Differential",
-    y = "Average Post-Timeout Run Differential",
-    color = "Quadrant"
+    y = "Average Post-Timeout Run Differential"
   ) +
   theme_minimal() +
   theme(
     plot.title = element_text(hjust = 0.5),
     panel.grid.major = element_line(color = "gray", linetype = "dashed")
   ) +
-  scale_color_manual(values = c("Momentum Master" = "green", 
-                                "Momentum Amateur" = "red",
-                                "Momentum Stopper" = "blue",
-                                "Momentum Creator" = "orange"))
+  scale_x_continuous(limits = c(-3.3, -1.8)) +
+  scale_y_continuous(limits = c(-0.4, 1)) +
+  annotate("text", x = -2.05, y = 0.85, label = "Momentum Master", color = "green", size = 5, fontface = "bold") +
+  annotate("text", x = -2.05, y = -0.2, label = "Momentum Stopper", color = "purple", size = 5, fontface = "bold") +
+  annotate("text", x = -3.05, y = 0.85, label = "Momentum Creator", color = "blue", size = 5, fontface = "bold") +
+  annotate("text", x = -3.05, y = -0.2, label = "Momentum Amateur", color = "red", size = 5, fontface = "bold")
+
