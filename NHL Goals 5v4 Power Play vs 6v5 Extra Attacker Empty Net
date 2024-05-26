@@ -1,0 +1,237 @@
+install.packages("hockeyR")
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(ggrepel)
+library(tidyr)
+library(ggimage)
+library(hockeyR)
+#library(sportyR)
+tictoc::tic()
+progressr::with_progress({
+  nhl_pbp <- hockeyR::load_pbp(2023) #select season
+})
+tictoc::toc()
+View(nhl_pbp)
+
+tictoc::tic()
+progressr::with_progress({
+  nhl_logos <- hockeyR::team_logos_colors
+})
+
+goals <- nhl_pbp %>%
+  filter(
+    event_type %in% c("GOAL"),
+    season_type %in% c("R")) #only regular season for now
+
+goal_no_short <- goals %>%
+  filter(
+    strength_code %in% c("EV", "PP"), 
+    empty_net == FALSE
+  )
+
+special_teams_goals <- goals %>%
+  filter(
+    strength_code %in% c("SH", "PP"), 
+  )
+
+# Aggregate goals by team and strength_code
+goals_per_team <- goal_no_short %>%
+  group_by(event_team, strength_code) %>%
+  summarize(goals = n()) %>%
+  ungroup()
+
+# Reshape the data to have columns for even-strength and power play goals
+goals_per_team_wide <- goals_per_team %>%
+  pivot_wider(
+    names_from = strength_code,
+    values_from = goals,
+    values_fill = list(goals = 0)
+  ) %>%
+  rename(EV_goals = EV, PP_goals = PP)
+
+# Calculate goals per game assuming each team plays 82 games
+goals_per_game <- goals_per_team_wide %>%
+  mutate(
+    EV_goals_per_game = EV_goals / 82,
+    PP_goals_per_game = PP_goals / 82
+  )
+
+# Plot the data
+ggplot(goals_per_game, aes(x = EV_goals_per_game, y = PP_goals_per_game, label = event_team)) +
+  geom_point() +
+  geom_text(vjust = -0.5) +
+  labs(
+    title = "Even-Strength Goals per Game vs. Power Play Goals per Game",
+    x = "Even-Strength Goals per Game",
+    y = "Power Play Goals per Game"
+  ) +
+  theme_minimal()
+
+power_play_plays <- nhl_pbp %>%
+  filter(
+    strength_state %in% c("5v4"),
+    event_type != "STOP")
+
+empty_net_endgame_plays <- nhl_pbp %>%
+  filter(
+    strength_state %in% c("6v5"), 
+    extra_attacker == "TRUE")
+
+# Calculate total time in 5v4 and goals scored for each team
+team_5v4_stats <- power_play_plays %>%
+  group_by(game_id, event_team) %>%
+  arrange(game_id, event_idx) %>%
+  mutate(
+    next_gametime_seconds_remaining = lead(game_seconds_remaining),
+    time_in_5v4 = game_seconds_remaining - next_gametime_seconds_remaining
+  ) %>%
+  filter(!is.na(time_in_5v4)) %>%
+  summarize(
+    total_5v4_time = sum(time_in_5v4, na.rm = TRUE),
+    goals_5v4 = sum(event_type == "GOAL")
+  ) %>%
+  ungroup() %>%
+  group_by(event_team) %>%
+  summarize(
+    total_5v4_time = sum(total_5v4_time, na.rm = TRUE),
+    goals_5v4 = sum(goals_5v4, na.rm = TRUE)
+  )
+
+# Calculate total time in 6v5 and goals scored for each team
+team_6v5_stats <- empty_net_endgame_plays %>%
+  group_by(game_id, event_team) %>%
+  arrange(game_id, event_idx) %>%
+  mutate(
+    next_gametime_seconds_remaining = lead(game_seconds_remaining),
+    time_in_6v5 = game_seconds_remaining - next_gametime_seconds_remaining
+  ) %>%
+  filter(!is.na(time_in_6v5)) %>%
+  summarize(
+    total_6v5_time = sum(time_in_6v5, na.rm = TRUE),
+    goals_6v5 = sum(event_type == "GOAL")
+  ) %>%
+  ungroup() %>%
+  group_by(event_team) %>%
+  summarize(
+    total_6v5_time = sum(total_6v5_time, na.rm = TRUE),
+    goals_6v5 = sum(goals_6v5, na.rm = TRUE)
+  )
+
+
+# Filter for 6v5 situations for all teams
+sixvfive_all_teams <- nhl_pbp %>%
+  filter(strength_state == "6v5" & event_type == "GOAL")
+
+fivefour_all_teams <- nhl_pbp %>%
+  filter(strength_state == "5v4" & event_type == "GOAL")
+
+# Aggregate goals from sixvfive_all_teams by team
+sixvfive_goals <- sixvfive_all_teams %>%
+  group_by(event_team) %>%
+  summarize(goals_extra_attacker = sum(event_type == "GOAL"))
+
+# Aggregate goals from fivefour_all_teams by team
+fivefour_goals <- fivefour_all_teams %>%
+  group_by(event_team) %>%
+  summarize(goals_pp = sum(event_type == "GOAL"))
+
+
+
+# Merge the two datasets
+team_scoring_stats <- team_5v4_stats %>%
+  full_join(team_6v5_stats, by = "event_team") %>%
+  mutate(
+    total_5v4_time = replace_na(total_5v4_time, 0),
+    goals_5v4 = replace_na(goals_5v4, 0),
+    total_6v5_time = replace_na(total_6v5_time, 0),
+    goals_6v5 = replace_na(goals_6v5, 0),
+  )
+
+# Merge the aggregated goals with team_scoring_stats
+team_scoring_stats <- team_scoring_stats %>%
+  left_join(sixvfive_goals, by = "event_team") %>%
+  left_join(fivefour_goals, by = "event_team") %>%
+  mutate(
+    goals_6v5 = ifelse(is.na(goals_extra_attacker), 0, goals_extra_attacker),
+    goals_5v4 = ifelse(is.na(goals_pp), 0, goals_pp),
+  ) 
+
+team_scoring_stats <- team_scoring_stats %>% 
+  mutate(
+    scoring_rate_5v4 = goals_5v4 / total_5v4_time * 3600,
+    scoring_rate_6v5 = goals_6v5 / total_6v5_time * 3600
+  )
+
+# 
+# # Filter specifically for the Chicago Blackhawks
+# blackhawks_sixvfive_goals <- sixvfive_all_teams %>%
+#   filter(event_team == "Chicago Blackhawks")
+# 
+# # Count the number of 6v5 goals for the Blackhawks
+# num_blackhawks_sixvfive_goals <- nrow(blackhawks_sixvfive_goals)
+# 
+# # Display the number of 6v5 goals for the Blackhawks
+# print(num_blackhawks_sixvfive_goals)
+
+# blackhawks_6v5_goals <- nhl_pbp %>%
+#   filter(event_team == "Chicago Blackhawks",     # Filter for Chicago Blackhawks
+#          strength_state == "6v5",                # Filter for 6v5 situations
+#          event_type == "GOAL")                   # Filter for goals
+# 
+# # View the resulting dataset
+# blackhawks_6v5_goals
+
+# Join the datasets
+team_scoring_stats_with_logos <- team_scoring_stats %>%
+  left_join(nhl_logos, by = c("event_team" = "full_team_name"))
+
+# Add the logo URL manually for the Montreal Canadiens
+team_scoring_stats_with_logos <- team_scoring_stats_with_logos %>%
+  mutate(team_logo_espn = ifelse(event_team == "Montréal Canadiens",
+                                 "https://a.espncdn.com/i/teamlogos/nhl/500/MON.png",
+                                 team_logo_espn))
+
+avg_5v4 <- mean(team_scoring_stats_with_logos$scoring_rate_5v4, na.rm = TRUE)
+avg_6v5 <- mean(team_scoring_stats_with_logos$scoring_rate_6v5, na.rm = TRUE)
+
+# Plot the goals scored with team logos
+ggplot(team_scoring_stats_with_logos, aes(x = scoring_rate_5v4, y = scoring_rate_6v5)) +
+  geom_point() +
+  geom_image(aes(image = team_logo_espn), size = 0.1) + # Adjust size as needed
+  geom_vline(xintercept = avg_5v4, linetype = "dashed") +
+  geom_hline(yintercept = avg_6v5, linetype = "dashed") +
+  annotate("text", x = avg_5v4, y = Inf, label = round(avg_5v4, 2), vjust = 1, hjust = 1) + # Label geom_vline
+  annotate("text", x = -Inf, y = avg_6v5, label = round(avg_6v5, 2), vjust = 0.5, hjust = 1) + # Label geom_hline
+  labs(
+    title = "Skater Advantage Goal Scoring Rates, 2022-23 NHL Regular/Postseason",
+    x = "Rate Goals Scored in 5v4, per 60 minutes",
+    y = "Rate Goals Scored in 6v5, per 60 minutes"
+  ) +
+  scale_y_log10(
+    limits = c(0.5, 11.75), 
+    breaks = c(seq(0.5, 3.5, by = 0.5), seq(3.5, 11.75, by = 1.5)) # Custom breaks for y log scale
+  ) +   scale_x_continuous(limits = c(0.85, 2.15), breaks = seq(0.85, 2.15, by = 0.20)) +
+  theme_minimal() +
+theme(
+  plot.title = element_text(hjust = 0.5),
+  panel.grid.major = element_line(color = "gray", linetype = "dashed")
+) 
+
+#hockey reference statmuse other stat websites check PPO
+
+# Plot the goals scored
+ggplot(team_scoring_stats, aes(x = goals_5v4, y = goals_6v5)) +
+  geom_point() +
+  geom_text_repel(aes(label = event_team), max.overlaps = 23) +
+  labs(
+    title = "Goals Scored: 5v4 vs 6v5",
+    x = "Goals Scored in 5v4",
+    y = "Goals Scored in 6v5"
+  ) +
+  theme_minimal()
+
+
+
+#rate of scoring on PP, EVEN, 6v5, shorthanded, etc, what is most efficient based on percentage (more PP goals scored than 6v5 goals but is 6v5 actually more efficient in scoring goals?)
