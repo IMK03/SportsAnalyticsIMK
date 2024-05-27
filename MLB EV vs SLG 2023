@@ -1,0 +1,81 @@
+install.packages("baseballr")
+install.packages("mlbplotR")
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(ggrepel)
+library(tidyr)
+library(ggimage)
+library(hockeyR)
+library(mlbplotR)
+library(ggimage)
+help(package = "baseballr")
+tictoc::tic()
+progressr::with_progress({
+  mlb_stat_names <- baseballr::mlb_baseball_stats() #select season
+})
+tictoc::toc()
+
+tictoc::tic()
+progressr::with_progress({
+  mlb_logos <- baseballr::mlb_teams() #select season
+})
+tictoc::toc()
+
+mlb_logos <- mlb_logos %>%
+  filter(league_id %in% c("103", "104"))
+
+mlb_logos <- mlbplotR::load_mlb_teams() |> 
+  dplyr::filter(!team_abbr %in% c("AL", "NL", "MLB")) |> 
+  dplyr::mutate(
+    a = rep(1:6, 5),
+    b = sort(rep(1:5, 6), decreasing = TRUE),
+    #alpha = ifelse(grepl("A", team_abbr), 1, 0.75), # Keep alpha == 1 for teams that have an "A"
+    #color = ifelse(grepl("E", team_abbr), "b/w", NA) # Set teams that have an "E" to black & white
+  )
+
+# Get team batting leaderboard data
+tictoc::tic()
+progressr::with_progress({
+  team_batting_data <- baseballr::fg_team_batter
+})
+tictoc::toc()
+
+head(team_batting_data())
+
+# Define the date range for the season
+start_date <- "2023-03-30"
+end_date <- "2023-10-01"
+
+standard_batting <- read.csv("C:\\Users\\imksy\\Documents\\baseball_reference_slg.csv")
+
+advanced_batting <- read.csv("C:\\Users\\imksy\\Documents\\baseball_reference_ev.csv")
+
+# Merge the datasets based on a common identifier (e.g., team)
+combined_batting <- merge(standard_batting, advanced_batting, by = "Tm")
+
+# Merge the datasets based on a common identifier (e.g., team)
+combined_batting_logos <- merge(combined_batting, mlb_logos, by.x = "Tm", by.y = "team_name")
+
+avg_ev <- mean(combined_batting_logos$EV, na.rm = TRUE)
+avg_slg <- mean(combined_batting_logos$SLG, na.rm = TRUE)
+
+
+ggplot(combined_batting_logos, aes(x = EV, y = SLG)) +
+  geom_image(aes(image = team_logo_espn), size = 0.1) + 
+  geom_vline(xintercept = avg_ev, linetype = "dashed") +
+  geom_hline(yintercept = avg_slg, linetype = "dashed") +
+  labs(title = "Exit Velocity vs. Slugging Percentage by Team, 2023 MLB Season",
+       x = "Exit Velocity (EV)",
+       y = "Slugging Percentage (SLG)",
+       color = "Team") +
+  scale_x_continuous(
+    limits = c(87, 91) #breaks
+  ) +
+  scale_y_continuous(limits = c(0.37, 0.5)) + 
+  theme_minimal() +
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      panel.grid.major = element_line(color = "gray", linetype = "dashed")
+    ) 
