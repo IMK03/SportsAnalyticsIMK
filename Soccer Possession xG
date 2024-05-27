@@ -38,10 +38,14 @@ combined_table_possession <- left_join(combined_table_possession, crests, by = c
 avg_poss <- mean(combined_table_possession$Poss, na.rm = TRUE)
 avg_xg <- mean(combined_table_possession$xG, na.rm = TRUE)
 avg_xga <- mean(combined_table_possession$xGA, na.rm = TRUE)
+avg_goals_scored <- mean(combined_table_possession$GF, na.rm = TRUE)
+avg_goals_allowed <- mean(combined_table_possession$GA, na.rm = TRUE)
 
 combined_table_possession$Poss <- as.numeric(combined_table_possession$Poss)
 combined_table_possession$xG <- as.numeric(combined_table_possession$xG)
 combined_table_possession$xGA <- as.numeric(combined_table_possession$xGA)
+combined_table_possession$GF <- as.numeric(combined_table_possession$GF)
+combined_table_possession$GA <- as.numeric(combined_table_possession$GA)
 
 
 ggplot(combined_table_possession, aes(x = Poss, y = xG, label = Squad)) +
@@ -78,6 +82,51 @@ ggplot(combined_table_possession, aes(x = Poss, y = xGA, label = Squad)) +
   ) +
   scale_y_continuous(limits = c(28.0, 78.0), 
                      breaks = c(seq(28.0, 78.0, by = 10.0))) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed")
+  )
+
+ggplot(combined_table_possession, aes(x = xG, y = GF, label = Squad)) +
+  geom_image(aes(image = URL), size = 0.1) + 
+  geom_vline(xintercept = avg_xg, linetype = "dashed") +
+  geom_hline(yintercept = avg_goals_scored, linetype = "dashed") +
+  labs(title = "Expected Goals vs Actual Goals Scored, 2023-24 Premier League",
+       x = "Expected Goals (xG)",
+       y = "Actual Goals Scored",
+       color = "Team") +
+  scale_x_continuous(
+    limits = c(38.0, 88.0), 
+    breaks = c(seq(38.0, 88.0, by = 10.0))
+  ) + scale_y_continuous(
+    limits = c(35, 96), 
+    breaks = c(seq(35, 95, by = 10))
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed")
+  )
+
+ggplot(combined_table_possession, aes(x = xGA, y = GA, label = Squad)) +
+  geom_image(aes(image = URL), size = 0.1) + 
+  geom_vline(xintercept = avg_xga, linetype = "dashed") +
+  geom_hline(yintercept = avg_goals_allowed, linetype = "dashed") +
+  labs(title = "Expected Goals Allowed vs Actual Goals Allowed, 2023-24 Premier League",
+       x = "Expected Goals Allowed (xGA)",
+       y = "Actual Goals Allowed",
+       color = "Team") +
+  scale_x_continuous(
+    limits = c(28.0, 78.0), 
+    breaks = c(seq(28.0, 78.0, by = 10.0))
+  ) + scale_y_continuous(
+    limits = c(29, 104), 
+    breaks = c(seq(30, 100, by = 10))
+  ) +
+  #coord_flip() +
+  scale_x_reverse() +
+  scale_y_reverse() +
   theme_minimal() +
   theme(
     plot.title = element_text(hjust = 0.5),
