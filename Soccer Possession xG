@@ -1,0 +1,85 @@
+install.packages("worldfootballR")
+library(worldfootballR)
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(ggrepel)
+library(tidyr)
+library(ggimage)
+help(package = "worldfootballR")
+
+tictoc::tic()
+progressr::with_progress({
+  epl_possession_stats <- worldfootballR::fotmob_get_season_stats(
+    country = "ENG",
+    league_name = "Premier League",
+    season_name = "2023/24",
+    stat_name = "Possession",
+    team_or_player = "team"
+  )
+})
+tictoc::toc()
+
+possession_stats <- read.csv("C:\\Users\\imksy\\Documents\\PL 202324 possession.csv")
+
+table_pl <- read.csv("C:\\Users\\imksy\\Documents\\PL 202324.csv")
+
+# Merge the datasets based on a common identifier (e.g., team)
+combined_table_possession <- merge(table_pl, possession_stats, by = "Squad")
+
+crests <- read_csv("https://raw.githubusercontent.com/dm13450/FootballCrests/main/crest.csv")
+combined_table_possession <- left_join(combined_table_possession, crests, by = c("Squad" = "Team"))
+
+# Assuming your dataset is named combined_table_possession
+#combined_table_possession$URL[combined_table_possession$Squad == "Sheffield Utd"] <- "https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/398.png"
+
+
+avg_poss <- mean(combined_table_possession$Poss, na.rm = TRUE)
+avg_xg <- mean(combined_table_possession$xG, na.rm = TRUE)
+avg_xga <- mean(combined_table_possession$xGA, na.rm = TRUE)
+
+combined_table_possession$Poss <- as.numeric(combined_table_possession$Poss)
+combined_table_possession$xG <- as.numeric(combined_table_possession$xG)
+combined_table_possession$xGA <- as.numeric(combined_table_possession$xGA)
+
+
+ggplot(combined_table_possession, aes(x = Poss, y = xG, label = Squad)) +
+  geom_image(aes(image = URL), size = 0.1) + 
+  geom_vline(xintercept = avg_poss, linetype = "dashed") +
+  geom_hline(yintercept = avg_xg, linetype = "dashed") +
+  labs(title = "Possession vs Expected Goals Scored, 2023-24 Premier League",
+       x = "Possession %",
+       y = "Expected Goals (xG)",
+       color = "Team") +
+  scale_x_continuous(
+    limits = c(35.0, 65.0), 
+    breaks = c(seq(35.0, 65.0, by = 5.0))
+  ) +
+  scale_y_continuous(limits = c(38.0, 88.0), 
+                     breaks = c(seq(38.0, 88.0, by = 10.0))) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed")
+  )
+
+ggplot(combined_table_possession, aes(x = Poss, y = xGA, label = Squad)) +
+  geom_image(aes(image = URL), size = 0.1) + 
+  geom_vline(xintercept = avg_poss, linetype = "dashed") +
+  geom_hline(yintercept = avg_xga, linetype = "dashed") +
+  labs(title = "Possession vs Expected Goals Allowed, 2023-24 Premier League",
+       x = "Possession %",
+       y = "Expected Goals Allowed (xGA)",
+       color = "Team") +
+  scale_x_continuous(
+    limits = c(35.0, 65.0), 
+    breaks = c(seq(35.0, 65.0, by = 5.0))
+  ) +
+  scale_y_continuous(limits = c(28.0, 78.0), 
+                     breaks = c(seq(28.0, 78.0, by = 10.0))) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed")
+  )
