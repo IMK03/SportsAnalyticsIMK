@@ -61,6 +61,11 @@ combined_batting_logos <- merge(combined_batting, mlb_logos, by.x = "Tm", by.y =
 avg_ev <- mean(combined_batting_logos$EV, na.rm = TRUE)
 avg_slg <- mean(combined_batting_logos$SLG, na.rm = TRUE)
 
+# Calculate non_HR_slugging
+combined_batting_logos$non_HR_slugging <- ((combined_batting_logos$H - (combined_batting_logos$X2B + combined_batting_logos$X3B) + (2 * combined_batting_logos$X2B) + (3 * combined_batting_logos$X3B)) / (combined_batting_logos$AB - combined_batting_logos$HR))
+#might need to also adjust for not accounting for ev hits without HR
+
+avg_nonHr_slg <- mean(combined_batting_logos$non_HR_slugging, na.rm = TRUE)
 
 ggplot(combined_batting_logos, aes(x = EV, y = SLG)) +
   geom_image(aes(image = team_logo_espn), size = 0.1) + 
@@ -79,3 +84,17 @@ ggplot(combined_batting_logos, aes(x = EV, y = SLG)) +
       plot.title = element_text(hjust = 0.5),
       panel.grid.major = element_line(color = "gray", linetype = "dashed")
     ) 
+
+ggplot(combined_batting_logos, aes(x = EV, y = non_HR_slugging)) +
+  geom_image(aes(image = team_logo_espn), size = 0.1) + 
+  geom_vline(xintercept = avg_ev, linetype = "dashed") +
+  geom_hline(yintercept = avg_nonHr_slg, linetype = "dashed") +
+  labs(title = "Exit Velocity vs. Non-HR Slugging Percentage by Team, 2023 MLB Season",
+       x = "Exit Velocity (EV)",
+       y = "Non-HR Slugging Percentage",
+       color = "Team") + 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed")
+  ) 
