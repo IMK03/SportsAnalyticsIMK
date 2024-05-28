@@ -193,3 +193,4 @@ ggplot(team_averages, aes(x = avg_pre_timeout_run, y = avg_post_timeout_run)) +
   annotate("text", x = -3.05, y = 0.85, label = "Momentum Creator", color = "blue", size = 5, fontface = "bold") +
   annotate("text", x = -3.05, y = -0.2, label = "Momentum Amateur", color = "red", size = 5, fontface = "bold")
 
+#https://x.com/TotallyREALSpo1/status/1794074804498088057
