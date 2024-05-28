@@ -33,9 +33,9 @@ illinois_sr_advanced = read.csv("C:\\Users\\imksy\\Documents\\illini advanced sr
 illini_top8 <- illinois_sr_advanced %>%
   filter(MP >= 400)
 
-ggplot(illini_top8, aes(x = PER, y = BPM, label = Player)) +
+ggplot(illini_top8, aes(x = PER, y = BPM, label = Player, size = MP)) +
   geom_point(color = "orange") +
-  geom_text() +  # Adjust the label position if needed
+  geom_text_repel(max.overlaps = 50) +  # Adjust the label position if needed
   #geom_vline(xintercept = avg_un_p2s, linetype = "dashed") +
   #geom_hline(yintercept = avg_epa_play, linetype = "dashed") +
   labs(x = "Player Efficiency Rating (PER)", y = "Box Plus/Minus +/- (BPM)", title = "Fighting Illini Basketball 2023-24 BPM vs PER") +
@@ -44,7 +44,8 @@ ggplot(illini_top8, aes(x = PER, y = BPM, label = Player)) +
   theme_minimal() +
   theme(
     plot.title = element_text(hjust = 0.5),
-    panel.grid.major = element_line(color = "gray", linetype = "dashed")
+    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+    legend.position = "none"
   )
 
 #https://x.com/TotallyREALSpo1/status/1795319305883775223
