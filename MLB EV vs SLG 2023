@@ -98,3 +98,5 @@ ggplot(combined_batting_logos, aes(x = EV, y = non_HR_slugging)) +
     plot.title = element_text(hjust = 0.5),
     panel.grid.major = element_line(color = "gray", linetype = "dashed")
   ) 
+
+#https://twitter.com/TotallyREALSpo1/status/1794970451715756266
