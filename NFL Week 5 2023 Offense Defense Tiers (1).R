@@ -115,6 +115,59 @@ ggplot(wk5_def, aes(x = mean_epa, y = success_rate)) +
 
 ggsave("def_performance_w5.png", width = 16, height = 9, units = "cm")
 
+# Performances week 10 on 
+
+wk10_on_def = pbp_23 |>
+  filter(week %in% c(10, 11, 12, 13, 14, 15, 16, 17, 18), !is.na(yards_gained), (pass == 1 | rush == 1)) |> 
+  group_by(defteam) |> 
+  summarise(mean_epa = mean(epa),
+            success_rate = mean(success),
+            ypa = mean(yards_gained),
+            plays = n()) |> 
+  arrange(mean_epa)
+
+
+# Final Plots
+
+ggplot(wk10_on_def, aes(x = mean_epa, y = success_rate)) +
+  labs(
+    x = "EPA per play Allowed (explosiveness)",
+    y = "Success Rate Allowed (consistency)",
+    title = "NFL Defensive Performances (Week 10 on)",
+    caption = "By: Idrees Muhammad Kudaimi  |  Data @nflfastR"
+  ) +
+  scale_x_reverse() +
+  scale_y_reverse() +
+  stat_smooth(formula = y ~ x, method = 'lm', geom = 'line', se = FALSE, color = "gray") +
+  nflplotR::geom_mean_lines(aes(x0 = mean_epa, y0 = success_rate)) +
+  nflplotR::geom_nfl_logos(aes(team_abbr = defteam), width = .07, alpha = .7)
+
+
+# Performances week 10 on 
+
+wk10_on_off = pbp_23 |>
+  filter(week %in% c(10, 11, 12, 13, 14, 15, 16, 17, 18), !is.na(yards_gained), (pass == 1 | rush == 1)) |> 
+  group_by(posteam) |> 
+  summarise(mean_epa = mean(epa),
+            success_rate = mean(success),
+            ypa = mean(yards_gained),
+            plays = n()) |> 
+  arrange(mean_epa)
+
+
+# Final Plots
+
+ggplot(wk10_on_off, aes(x = mean_epa, y = success_rate)) +
+  labs(
+    x = "EPA per play (explosiveness)",
+    y = "Success Rate (consistency)",
+    title = "NFL Offensive Performances (Week 10 on)",
+    caption = "By: Idrees Muhammad Kudaimi  |  Data @nflfastR"
+  ) +
+  stat_smooth(formula = y ~ x, method = 'lm', geom = 'line', se = FALSE, color = "gray") +
+  nflplotR::geom_mean_lines(aes(x0 = mean_epa, y0 = success_rate)) +
+  nflplotR::geom_nfl_logos(aes(team_abbr = posteam), width = .07, alpha = .7)
+
 
 
 
