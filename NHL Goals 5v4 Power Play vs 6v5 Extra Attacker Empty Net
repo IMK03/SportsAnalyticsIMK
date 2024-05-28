@@ -232,6 +232,6 @@ ggplot(team_scoring_stats, aes(x = goals_5v4, y = goals_6v5)) +
   ) +
   theme_minimal()
 
-
+#https://twitter.com/TotallyREALSpo1/status/1794630856759492897
 
 #rate of scoring on PP, EVEN, 6v5, shorthanded, etc, what is most efficient based on percentage (more PP goals scored than 6v5 goals but is 6v5 actually more efficient in scoring goals?)
