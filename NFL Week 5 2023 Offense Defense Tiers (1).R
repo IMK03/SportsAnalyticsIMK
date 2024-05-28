@@ -169,5 +169,5 @@ ggplot(wk10_on_off, aes(x = mean_epa, y = success_rate)) +
   nflplotR::geom_nfl_logos(aes(team_abbr = posteam), width = .07, alpha = .7)
 
 
-
+#https://x.com/TotallyREALSpo1/status/1795281662995046529
 
