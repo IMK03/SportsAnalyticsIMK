@@ -37,13 +37,29 @@ nfl_epa_qb$Last_Name <- sub(".*\\.", "", nfl_epa_qb$Player)
 # Create a new column in nfl_pressure_qb containing only the last name
 nfl_pressure_qb$Last_Name <- sub(".*\\s", "", nfl_pressure_qb$Player)
 
+
 # Merge the datasets based on the Last_Name column
 merged_data <- merge(nfl_epa_qb, nfl_pressure_qb, by = "Last_Name")
 
+merged_data$Player.y <- gsub("[*+]", "", merged_data$Player.y)
+
+
+
+# Now you can proceed with plotting or any further analysis
 
 
 avg_un_p2s <- mean(merged_data$unadjusted_p2s, na.rm = TRUE)
 avg_epa_play <- mean(merged_data$EPA.play, na.rm = TRUE)
+
+highest_team_qb_snaps <- merged_data %>%
+  filter(Plays >= 227)
+
+# Specify the last names to be removed
+last_names_to_remove <- c("Cousins", "Watson", "Taylor", "Zappe", "Tannehill", "Browning")
+
+# Remove entries with specified last names
+highest_team_qb_snaps <- highest_team_qb_snaps[!highest_team_qb_snaps$Last_Name %in% last_names_to_remove, ]
+
 
 ggplot(merged_data, aes(x = unadjusted_p2s, y = EPA.play, label = Player.y)) +
   geom_point() +
@@ -52,9 +68,28 @@ ggplot(merged_data, aes(x = unadjusted_p2s, y = EPA.play, label = Player.y)) +
   geom_vline(xintercept = avg_un_p2s, linetype = "dashed") +
   geom_hline(yintercept = avg_epa_play, linetype = "dashed") +
   labs(x = "Unadjusted Pressure to Sack Rate", y = "Unadjusted EPA/Play", title = "Comparison of Unadjusted P2S% and EPA/play") +
-  #nflplotR::geom_nfl_headshots(aes(Player.y = player_gsis), width = .07, alpha = .7) +
+  scale_y_continuous(limits = c(-0.32, 0.34), breaks = seq(-0.3, 0.3, by = 0.15)) +
+  scale_x_continuous(limits = c(0.15, 0.6), breaks = seq(0.15, 0.6, by = 0.15)) +
+  scale_x_reverse() +
   theme_minimal() +
   theme(
     plot.title = element_text(hjust = 0.5),
     panel.grid.major = element_line(color = "gray", linetype = "dashed")
   )
+
+ggplot(highest_team_qb_snaps, aes(x = unadjusted_p2s, y = EPA.play, label = Player.y)) +
+  geom_point() +
+  #geom_text(nudge_x = 0.1) +  # Adjust the label position if needed
+  geom_text_repel(max.overlaps = 50) +
+  geom_vline(xintercept = avg_un_p2s, linetype = "dashed") +
+  geom_hline(yintercept = avg_epa_play, linetype = "dashed") +
+  labs(x = "Unadjusted Pressure to Sack Rate", y = "Unadjusted EPA/Play", title = "Comparison of Unadjusted P2S% and EPA/play") +
+  scale_y_continuous(limits = c(-0.22, 0.34), breaks = seq(-0.2, 0.3, by = 0.10)) +
+  scale_x_continuous(limits = c(0.15, 0.6), breaks = seq(0.15, 0.6, by = 0.15)) +
+  scale_x_reverse() +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed")
+  )
+
