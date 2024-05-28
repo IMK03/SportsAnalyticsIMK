@@ -1,3 +1,33 @@
+install.packages("hoopR")
+library(hoopR)
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(ggrepel)
+library(tidyr)
+library(ggimage)
+progressr::with_progress({
+  mbb_pbp <-  hoopR::load_mbb_pbp(2024)
+})
+View(mbb_pbp)
+timeouts = subset(mbb_pbp,type_text %in% c("ShortTimeOut", "End Game", "End Period", "OfficialTVTimeOut"))
+View(timeouts)
+
+progressr::with_progress({
+  mbb_stats_team <-  hoopR::load_mbb_team_box()
+})
+
+progressr::with_progress({
+  mbb_stats_team_other <-  hoopR::load_mbb_player_box()
+})
+
+illinois = subset(mbb_pbp, away_team_name %in% c("Illinois") | home_team_name %in% c("Illinois"))
+
+illinois_team_stats = subset(mbb_stats_team, team_location %in% c("Illinois"))
+
+illinois_player_stats = subset(mbb_stats_team_other, team_location %in% c("Illinois"))
+
 illinois_sr_advanced = read.csv("C:\\Users\\imksy\\Documents\\illini advanced sr.csv")
 
 illini_top8 <- illinois_sr_advanced %>%
