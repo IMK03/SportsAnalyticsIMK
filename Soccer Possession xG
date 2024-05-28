@@ -132,3 +132,5 @@ ggplot(combined_table_possession, aes(x = xGA, y = GA, label = Squad)) +
     plot.title = element_text(hjust = 0.5),
     panel.grid.major = element_line(color = "gray", linetype = "dashed")
   )
+
+#https://twitter.com/TotallyREALSpo1/status/1795196682092544162
