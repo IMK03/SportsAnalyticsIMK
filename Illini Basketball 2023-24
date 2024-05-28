@@ -46,3 +46,5 @@ ggplot(illini_top8, aes(x = PER, y = BPM, label = Player)) +
     plot.title = element_text(hjust = 0.5),
     panel.grid.major = element_line(color = "gray", linetype = "dashed")
   )
+
+#https://x.com/TotallyREALSpo1/status/1795319305883775223
