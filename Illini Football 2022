@@ -17,4 +17,119 @@ pacman::p_load_current_gh("sportsdataverse/cfbfastR", dependencies = TRUE, updat
 
 install.packages("cfbfastR")
 install.packages("cfbplotR")
+install.packages("cfbreadR")
+install.packages("cfb4th")
 devtools::install_github("sportsdataverse/cfb4th")
+
+#setwd("C:\\Users\\imksy\\Downloads\\cfbfastR")
+
+install.packages("C:\\Users\\imksy\\Downloads\\cfbfastR", repos = NULL, type = "source")
+
+tictoc::tic()
+progressr::with_progress({
+  cfb_pbp <- cfbfastR::load_cfb_pbp(2022)
+})
+tictoc::toc()
+
+illinois_fb <- cfb_pbp %>%
+  filter(pos_team == "Illinois" | def_pos_team == "Illinois")
+
+illinois_fb_off <- cfb_pbp %>%
+  filter(pos_team == "Illinois")
+  
+
+illinois_fb_df <- cfb_pbp %>%
+  filter(def_pos_team == "Illinois")
+
+
+
+# ggplot(illini_fb_off, aes(x = EPA, y = wpa)) + #label = play_text)) +
+#   geom_point(color = "orange") +
+#   #geom_text() +  # Adjust the label position if needed
+#   #geom_vline(xintercept = avg_un_p2s, linetype = "dashed") +
+#   #geom_hline(yintercept = avg_epa_play, linetype = "dashed") +
+#   labs(x = "Player Efficiency Rating (PER)", y = "Box Plus/Minus +/- (BPM)", title = "Fighting Illini Basketball 2023-24 BPM vs PER") +
+#   scale_y_continuous(limits = c(3, 12), breaks = seq(3, 12, by = 3)) +
+#   scale_x_continuous(limits = c(10, 30), breaks = seq(10, 30, by = 4)) +
+#   theme_minimal() +
+#   theme(
+#     plot.title = element_text(hjust = 0.5),
+#     panel.grid.major = element_line(color = "gray", linetype = "dashed")
+#   )
+
+
+
+# Summarize EPA and WPA by receiver
+summary_off <- illinois_fb_off %>%
+  group_by(receiver_player_name) %>%
+  summarize(
+    total_epa = sum(EPA, na.rm = TRUE),
+    total_wpa = sum(wpa, na.rm = TRUE),
+    num_plays = n()
+  ) %>%
+  ungroup() %>%
+  mutate(
+    epa_per_play = total_epa / num_plays,
+    wpa_per_play = total_wpa / num_plays
+  )
+
+summary_off <- summary_off %>%
+  filter(num_plays >= 10)
+
+# Plotting
+ggplot(summary_off, aes(x = epa_per_play, y = wpa_per_play, label = receiver_player_name, size = num_plays)) +
+  geom_point(color = "orange") +
+  geom_text_repel(max.overlaps = 50) +
+  labs(
+    title = 'WPA/play vs EPA/play for 2022 Illini Receivers',
+    x = 'EPA/play',
+    y = 'WPA/play'
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+    legend.position = "none"
+  )
+
+# Combine all defensive player columns into one
+long_df <- illinois_fb_df %>%
+  gather(key = "play_type", value = "player_name", sack_player_name, sack_player_name2, 
+         pass_breakup_player_name, interception_player_name, 
+         fumble_forced_player_name, fumble_recovered_player_name) %>%
+  filter(!is.na(player_name))
+
+# Summarize EPA and WPA by defensive player
+summary_df <- long_df %>%
+  group_by(player_name) %>%
+  summarize(
+    total_epa = sum(def_EPA, na.rm = TRUE),
+    total_wpa = sum(-wpa, na.rm = TRUE),
+    num_plays = n()
+  ) %>%
+  ungroup() %>%
+  mutate(
+    epa_per_play = total_epa / num_plays,
+    wpa_per_play = total_wpa / num_plays
+  )
+
+summary_df <- summary_df %>%
+  filter(num_plays >= 2)
+
+
+
+# Plotting without legend
+ggplot(summary_df, aes(x = epa_per_play, y = wpa_per_play, label = player_name, size = num_plays)) +
+  geom_point(color = "orange") +
+  geom_text_repel(max.overlaps = 50) +
+  labs(
+    title = 'WPA/play vs EPA/play for Illini Defensive Players on Big Plays 2022',
+    x = 'EPA/play',
+    y = 'WPA/play'
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+    legend.position = "none"
+  )
