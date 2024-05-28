@@ -133,3 +133,5 @@ ggplot(summary_df, aes(x = epa_per_play, y = wpa_per_play, label = player_name, 
     panel.grid.major = element_line(color = "gray", linetype = "dashed"),
     legend.position = "none"
   )
+
+#https://x.com/TotallyREALSpo1/status/1795542433880563961
