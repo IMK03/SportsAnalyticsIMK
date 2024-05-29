@@ -8,6 +8,8 @@ bigTen_logos <- mbb_logos %>%
 bigTen_cbb_202324 <- bigTen_cbb_202324 %>%
   left_join(bigTen_logos, by = c("School" = "short_name"))
 
+correlation_coefficient <- cor(bigTen_cbb_202324$Pace, bigTen_cbb_202324$ORtg, use = "complete.obs")
+
 
 ggplot(bigTen_cbb_202324, aes(x = Pace, y = ORtg)) + 
   geom_image(aes(image = logo), size = 0.1) + 
@@ -21,5 +23,6 @@ ggplot(bigTen_cbb_202324, aes(x = Pace, y = ORtg)) +
     plot.title = element_text(hjust = 0.5),
     panel.grid.major = element_line(color = "gray", linetype = "dashed"),
     legend.position = "none"
-  )
-  
+  ) +
+  annotate("text", x = 74, y = 95, label = paste("Correlation:", round(correlation_coefficient, 2)), 
+           hjust = 1, vjust = 0, size = 1, color = "red")
