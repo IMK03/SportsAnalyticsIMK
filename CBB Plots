@@ -1,6 +1,6 @@
 #https://x.com/TotallyREALSpo1/status/1795697918898286729
 
-bigTen_cbb_202324 <- read.csv("C:\\Users\\imksy\\Documents\\big ten cbb 202324.csv")
+bigTen_cbb_202324 <- read.csv("C:\\Users\\imksy\\Documents\\big ten cbb 202324.csv") #sports reference data
 
 bigTen_logos <- mbb_logos %>%
   filter(group_id == 7)
@@ -26,3 +26,33 @@ ggplot(bigTen_cbb_202324, aes(x = Pace, y = ORtg)) +
   ) +
   annotate("text", x = 74, y = 95, label = paste("Correlation:", round(correlation_coefficient, 5)), 
            hjust = 1, vjust = 0, size = 3, color = "red")
+
+
+# Calculate new statistics and create the Four_Factors aggregate stat
+bigTen_cbb_202324 <- bigTen_cbb_202324 %>%
+  mutate(
+    ORB_percent = ORB / (FGA - FG),
+    TOV_percent = TOV / (FGA + 0.475 * FTA + AST + TOV),
+    FTAR = FTA / FGA,
+    Four_Factors = eFG. + ORB_percent + FTAR - TOV_percent
+  )
+
+correlation_coefficient_nrtg_ff <- cor(bigTen_cbb_202324$Four_Factors, bigTen_cbb_202324$NRtg, use = "complete.obs")
+
+
+ggplot(bigTen_cbb_202324, aes(x = Four_Factors, y = NRtg)) + 
+  geom_image(aes(image = logo), size = 0.1) + 
+  geom_vline(xintercept = mean(bigTen_cbb_202324$Four_Factors, na.rm = TRUE), linetype = "dashed") +
+  geom_hline(yintercept = mean(bigTen_cbb_202324$NRtg, na.rm = TRUE), linetype = "dashed") +
+  labs(x = "Four Factors Aggregate", y = "Net Rating (Net Point differential per 100 possessions)", title = "Big Ten Net Rating vs Four Factors, 2023-24") +
+  scale_y_continuous(limits = c(-10.0, 20.0), breaks = seq(-10.0, 20.0, by = 5.0)) +
+  scale_x_continuous(limits = c(0.95, 1.2658922), breaks = seq(0.95, 1.25, by = 0.05)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+    legend.position = "none"
+  ) +
+  annotate("text", x = 1.2, y = -10, label = paste("Correlation:", round(correlation_coefficient_nrtg_ff, 5)), 
+           hjust = 1, vjust = 0, size = 3, color = "red")
+  
