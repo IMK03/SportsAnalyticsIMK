@@ -1,0 +1,25 @@
+#https://x.com/TotallyREALSpo1/status/1795697918898286729
+
+bigTen_cbb_202324 <- read.csv("C:\\Users\\imksy\\Documents\\big ten cbb 202324.csv")
+
+bigTen_logos <- mbb_logos %>%
+  filter(group_id == 7)
+
+bigTen_cbb_202324 <- bigTen_cbb_202324 %>%
+  left_join(bigTen_logos, by = c("School" = "short_name"))
+
+
+ggplot(bigTen_cbb_202324, aes(x = Pace, y = ORtg)) + 
+  geom_image(aes(image = logo), size = 0.1) + 
+  geom_vline(xintercept = mean(bigTen_cbb_202324$Pace, na.rm = TRUE), linetype = "dashed") +
+  geom_hline(yintercept = mean(bigTen_cbb_202324$ORtg, na.rm = TRUE), linetype = "dashed") +
+  labs(x = "Pace (Possessions per 40 minutes)", y = "Offensive Rating (Points scored per 100 possessions)", title = "Big Ten Offensive Rating vs Pace, 2023-24") +
+  scale_y_continuous(limits = c(95.0, 120.0), breaks = seq(95.0, 120.0, by = 5.0)) +
+  scale_x_continuous(limits = c(64, 74), breaks = seq(64, 74, by = 2)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+    legend.position = "none"
+  )
+  
