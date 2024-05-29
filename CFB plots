@@ -1,0 +1,98 @@
+
+# Calculate offensive EPA/play for each team
+offensive_summary <- cfb_pbp %>%
+  group_by(pos_team) %>%
+  summarize(
+    total_epa = sum(EPA, na.rm = TRUE),
+    num_plays = n()
+  ) %>%
+  mutate(epa_per_play = total_epa / num_plays)
+
+# Calculate defensive EPA/play for each team
+defensive_summary <- cfb_pbp %>%
+  group_by(def_pos_team) %>%
+  summarize(
+    total_epa = sum(def_EPA, na.rm = TRUE),
+    num_plays = n()
+  ) %>%
+  mutate(def_epa_per_play = total_epa / num_plays)
+
+
+# Calculate points per game for each team
+points_summary <- cfb_games %>%
+  group_by(home_team, away_team) %>%
+  summarize(
+    home_points_per_game = mean(home_points, na.rm = TRUE),
+    away_points_per_game = mean(away_points, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  pivot_longer(cols = c(home_points_per_game, away_points_per_game), 
+               names_to = "location", values_to = "points_per_game") %>%
+  mutate(team = ifelse(location == "home_points_per_game", home_team, away_team)) %>%
+  group_by(team) %>%
+  summarize(points_per_game = mean(points_per_game, na.rm = TRUE))
+
+# Calculate points allowed per game for each team
+points_allowed_summary <- cfb_games %>%
+  group_by(home_team, away_team) %>%
+  summarize(
+    home_points_allowed_per_game = mean(away_points, na.rm = TRUE),
+    away_points_allowed_per_game = mean(home_points, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  pivot_longer(cols = c(home_points_allowed_per_game, away_points_allowed_per_game), 
+               names_to = "location", values_to = "points_allowed_per_game") %>%
+  mutate(team = ifelse(location == "home_points_allowed_per_game", home_team, away_team)) %>%
+  group_by(team) %>%
+  summarize(points_allowed_per_game = mean(points_allowed_per_game, na.rm = TRUE))
+
+# Merge offensive and defensive summaries with points summaries
+team_summary <- offensive_summary %>%
+  left_join(defensive_summary, by = c("pos_team" = "def_pos_team")) %>%
+  left_join(points_summary, by = c("pos_team" = "team")) %>%
+  left_join(points_allowed_summary, by = c("pos_team" = "team")) %>%
+  rename(team = pos_team)
+
+# Assuming team_logos is your dataframe with team logos
+team_summary <- team_summary %>%
+  left_join(cfb_logos, by = c("team" = "school"))
+
+team_summary_fbs <- team_summary %>%
+  filter(classification == "fbs")
+
+# Plotting offensive EPA/play vs points per game
+ggplot(team_summary_fbs, aes(x = epa_per_play, y = points_per_game)) +
+  geom_image(aes(image = logo), size = 0.07, alpha = 0.8) +
+  labs(
+    title = 'CFB Offensive EPA/play vs Points per Game, 2022',
+    x = 'Offensive EPA/play',
+    y = 'Points per Game'
+  ) +
+  scale_x_continuous(limits = c(-0.25,0.25), breaks = seq(-0.25, 0.25, by = 0.125)) + 
+  scale_y_continuous(limits = c(10, 50), breaks = seq(10, 50, by = 10)) + 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "black", linetype = "dashed"),
+    legend.position = "none"
+  )
+
+# Plotting defensive EPA/play vs points allowed per game
+ggplot(team_summary_fbs, aes(x = def_epa_per_play, y = points_allowed_per_game)) +
+  geom_image(aes(image = logo), size = 0.07, alpha = 0.8) +
+  labs(
+    title = 'CFB Defensive EPA/play vs Points Allowed per Game, 2022',
+    x = 'Defensive EPA/play',
+    y = 'Points Allowed per Game'
+  ) +
+  scale_x_continuous(limits = c(-0.15,0.25), breaks = seq(-0.15, 0.25, by = 0.10)) + 
+  scale_y_continuous(limits = c(10, 50), breaks = seq(10, 50, by = 10)) +
+  scale_y_reverse() +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "black", linetype = "dashed"),
+    legend.position = "none"
+  )
+
+#https://x.com/TotallyREALSpo1/status/1795692728249930089
