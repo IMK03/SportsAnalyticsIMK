@@ -1,4 +1,6 @@
 
+
+
 # Calculate offensive EPA/play for each team
 offensive_summary <- cfb_pbp %>%
   group_by(pos_team) %>%
@@ -60,11 +62,19 @@ team_summary <- team_summary %>%
 team_summary_fbs <- team_summary %>%
   filter(classification == "fbs")
 
+team_summary_p5 <- team_summary_fbs %>%
+  filter(conference %in% c("ACC", "Big 12", "Big Ten", "Pac-12", "SEC") | team_id == 87) #2022 before realignment, 2023 partial realignment, 2024 full realignment
+
+team_summary_g5 <- team_summary_fbs %>%
+  filter(!(conference %in% c("ACC", "Big 12", "Big Ten", "Pac-12", "SEC")))
+team_summary_g5 <- team_summary_g5 %>%
+  filter(team_id != 87)
+
 # Plotting offensive EPA/play vs points per game
 ggplot(team_summary_fbs, aes(x = epa_per_play, y = points_per_game)) +
   geom_image(aes(image = logo), size = 0.07, alpha = 0.8) +
   labs(
-    title = 'CFB Offensive EPA/play vs Points per Game, 2022',
+    title = 'CFB FBS Points per Game vs Offensive EPA/play, 2022',
     x = 'Offensive EPA/play',
     y = 'Points per Game'
   ) +
@@ -81,13 +91,28 @@ ggplot(team_summary_fbs, aes(x = epa_per_play, y = points_per_game)) +
 ggplot(team_summary_fbs, aes(x = def_epa_per_play, y = points_allowed_per_game)) +
   geom_image(aes(image = logo), size = 0.07, alpha = 0.8) +
   labs(
-    title = 'CFB Defensive EPA/play vs Points Allowed per Game, 2022',
+    title = 'CFB FBS Points Allowed per Game vs Defensive EPA/play, 2022',
     x = 'Defensive EPA/play',
     y = 'Points Allowed per Game'
   ) +
   scale_x_continuous(limits = c(-0.15,0.25), breaks = seq(-0.15, 0.25, by = 0.10)) + 
-  scale_y_continuous(limits = c(10, 50), breaks = seq(10, 50, by = 10)) +
-  scale_y_reverse() +
+  scale_y_reverse(limits = c(50, 10), breaks = seq(10, 50, by = 10), expand = c(0, 0.5)) +  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "black", linetype = "dashed"),
+    legend.position = "none"
+  )
+
+# Plotting offensive EPA/play vs points per game
+ggplot(team_summary_p5, aes(x = epa_per_play, y = points_per_game)) +
+  geom_image(aes(image = logo), size = 0.1, alpha = 0.75) +
+  labs(
+    title = 'CFB Power 5 Points per Game vs Offensive EPA/play, 2022',
+    x = 'Offensive EPA/play',
+    y = 'Points per Game'
+  ) +
+  scale_x_continuous(limits = c(-0.20,0.21), breaks = seq(-0.20, 0.20, by = 0.1)) + 
+  scale_y_continuous(limits = c(10, 50), breaks = seq(10, 50, by = 10)) + 
   theme_minimal() +
   theme(
     plot.title = element_text(hjust = 0.5),
@@ -95,4 +120,58 @@ ggplot(team_summary_fbs, aes(x = def_epa_per_play, y = points_allowed_per_game))
     legend.position = "none"
   )
 
-#https://x.com/TotallyREALSpo1/status/1795692728249930089
+# Plotting defensive EPA/play vs points allowed per game
+ggplot(team_summary_p5, aes(x = def_epa_per_play, y = points_allowed_per_game)) +
+  geom_image(aes(image = logo), size = 0.1, alpha = 0.75) +
+  labs(
+    title = 'CFB Power 5 Points Allowed per Game vs Defensive EPA/play, 2022',
+    x = 'Defensive EPA/play',
+    y = 'Points Allowed per Game'
+  ) +
+  scale_y_continuous(limits = c(12, 37), breaks = seq(12, 36, by = 6)) +
+  scale_x_continuous(limits = c(-0.15,0.20), breaks = seq(-0.15, 0.15, by = 0.075)) + 
+  scale_y_reverse(breaks = seq(12, 36, by = 6)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "black", linetype = "dashed"),
+    legend.position = "none"
+  ) #removed colorado 44.5 PPG allowed outlier, but could just rerun filters to get them back and change breaks/limits
+
+
+# Plotting offensive EPA/play vs points per game
+ggplot(team_summary_g5, aes(x = epa_per_play, y = points_per_game)) +
+  geom_image(aes(image = logo), size = 0.1, alpha = 0.75) +
+  labs(
+    title = 'CFB Group of 5 Points Per Game vs EPA/Play, 2022',
+    x = 'Offensive EPA/play',
+    y = 'Points per Game'
+  ) +
+  scale_x_continuous(limits = c(-0.21,0.11), breaks = seq(-0.20, 0.1, by = 0.1)) + 
+  scale_y_continuous(limits = c(12, 40), breaks = seq(12, 36, by = 6)) + 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "black", linetype = "dashed"),
+    legend.position = "none"
+  )
+
+# Plotting defensive EPA/play vs points allowed per game
+ggplot(team_summary_g5, aes(x = def_epa_per_play, y = points_allowed_per_game)) +
+  geom_image(aes(image = logo), size = 0.1, alpha = 0.75) +
+  labs(
+    title = 'CFB Group of 5 Points Allowed per game vs Defensive EPA/play, 2022',
+    x = 'Defensive EPA/play',
+    y = 'Points Allowed per Game'
+  ) +
+  scale_x_continuous(limits = c(-0.15,0.25), breaks = seq(-0.15, 0.25, by = 0.075)) + 
+  scale_y_reverse(limits = c(42, 13), breaks = seq(40, 15, by = -5)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "black", linetype = "dashed"),
+    legend.position = "none"
+  )
+
+
+
