@@ -1,6 +1,7 @@
 #https://x.com/TotallyREALSpo1/status/1795697918898286729
 
-bigTen_cbb_202324 <- read.csv("C:\\Users\\imksy\\Documents\\big ten cbb 202324.csv") #sports reference data
+
+bigTen_cbb_202324 <- read.csv("C:\\Users\\imksy\\Documents\\big ten cbb 202324.csv")
 
 bigTen_logos <- mbb_logos %>%
   filter(group_id == 7)
@@ -27,7 +28,6 @@ ggplot(bigTen_cbb_202324, aes(x = Pace, y = ORtg)) +
   annotate("text", x = 74, y = 95, label = paste("Correlation:", round(correlation_coefficient, 5)), 
            hjust = 1, vjust = 0, size = 3, color = "red")
 
-
 # Calculate new statistics and create the Four_Factors aggregate stat
 bigTen_cbb_202324 <- bigTen_cbb_202324 %>%
   mutate(
@@ -38,6 +38,7 @@ bigTen_cbb_202324 <- bigTen_cbb_202324 %>%
   )
 
 correlation_coefficient_nrtg_ff <- cor(bigTen_cbb_202324$Four_Factors, bigTen_cbb_202324$NRtg, use = "complete.obs")
+
 
 
 ggplot(bigTen_cbb_202324, aes(x = Four_Factors, y = NRtg)) + 
@@ -55,4 +56,66 @@ ggplot(bigTen_cbb_202324, aes(x = Four_Factors, y = NRtg)) +
   ) +
   annotate("text", x = 1.2, y = -10, label = paste("Correlation:", round(correlation_coefficient_nrtg_ff, 5)), 
            hjust = 1, vjust = 0, size = 3, color = "red")
+
+# Read the datasets
+acc_202324 <- read.csv("C:\\Users\\imksy\\Documents\\acc sr cbb.csv")
+bigEast_202324 <- read.csv("C:\\Users\\imksy\\Documents\\big east sr cbb.csv")
+big12_202324 <- read.csv("C:\\Users\\imksy\\Documents\\Big 12 sports reference.csv")
+sec_202324 <- read.csv("C:\\Users\\imksy\\Documents\\sec sports reference cbb.csv")
+pac12_202324 <- read.csv("C:\\Users\\imksy\\Documents\\pac 12 cbb sports reference.csv")
+
+#pac12_202324 <- pac12_202324 %>% mutate(School = ifelse(School == "Washington State", "Washington St", School))
+
   
+
+# Define a function to process each dataset
+process_dataset <- function(df, conference_name, group_id) {
+  # Filter logos for the specific conference
+  logos <- mbb_logos %>%
+    filter(group_id == group_id)
+  
+  # Join logos with the dataset
+  df <- df %>%
+    left_join(logos, by = c("School" = "short_name")) %>%
+    mutate(
+      ORB_percent = ORB / (FGA - FG),
+      TOV_percent = TOV / (FGA + 0.475 * FTA + AST + TOV),
+      FTAR = FTA / FGA,
+      Four_Factors = eFG. + ORB_percent + FTAR - TOV_percent
+    )
+  
+  # Calculate the correlation coefficient
+  correlation_coefficient_nrtg_ff <- cor(df$Four_Factors, df$NRtg, use = "complete.obs")
+  
+  # Create the scatter plot
+  ggplot(df, aes(x = Four_Factors, y = NRtg)) + 
+    geom_image(aes(image = logo), size = 0.1) + 
+    geom_vline(xintercept = mean(df$Four_Factors, na.rm = TRUE), linetype = "dashed") +
+    geom_hline(yintercept = mean(df$NRtg, na.rm = TRUE), linetype = "dashed") +
+    labs(x = "Four Factors Aggregate", y = "Net Rating (Net Point differential per 100 possessions)", 
+         title = paste(conference_name, "Net Rating vs Four Factors, 2023-24")) +
+    #scale_y_continuous(limits = c(-10.0, 20.0), breaks = seq(-10.0, 20.0, by = 5.0)) +
+    #scale_x_continuous(limits = c(0.95, 1.27), breaks = seq(0.95, 1.27, by = 0.05)) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+      legend.position = "none"
+    ) +
+    annotate("text", x = 1.2, y = -10, label = paste("Correlation:", round(correlation_coefficient_nrtg_ff, 5)), 
+             hjust = 1, vjust = 0, size = 3, color = "red")
+}
+
+#Process each dataset and generate the plots
+acc_plot <- process_dataset(acc_202324, "ACC", 2)
+bigEast_plot <- process_dataset(bigEast_202324, "Big East", 4)
+big12_plot <- process_dataset(big12_202324, "Big 12", 8)
+sec_plot <- process_dataset(sec_202324, "SEC", 23)
+pac12_plot <- process_dataset(pac12_202324, "Pac-12", 21)
+
+#Display the plots
+print(acc_plot)
+print(bigEast_plot)
+print(big12_plot)
+print(sec_plot)
+print(pac12_plot)
