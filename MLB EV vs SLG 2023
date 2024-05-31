@@ -26,14 +26,10 @@ tictoc::toc()
 mlb_logos <- mlb_logos %>%
   filter(league_id %in% c("103", "104"))
 
+
 mlb_logos <- mlbplotR::load_mlb_teams() |> 
   dplyr::filter(!team_abbr %in% c("AL", "NL", "MLB")) |> 
-  dplyr::mutate(
-    a = rep(1:6, 5),
-    b = sort(rep(1:5, 6), decreasing = TRUE),
-    #alpha = ifelse(grepl("A", team_abbr), 1, 0.75), # Keep alpha == 1 for teams that have an "A"
-    #color = ifelse(grepl("E", team_abbr), "b/w", NA) # Set teams that have an "E" to black & white
-  )
+
 
 # Get team batting leaderboard data
 tictoc::tic()
@@ -53,7 +49,7 @@ standard_batting <- read.csv("C:\\Users\\imksy\\Documents\\baseball_reference_sl
 advanced_batting <- read.csv("C:\\Users\\imksy\\Documents\\baseball_reference_ev.csv")
 
 # Merge the datasets based on a common identifier (e.g., team)
-combined_batting <- merge(standard_batting, advanced_batting, by = "Tm")
+combined_batting <- merge(standard_batting, advanced_batting, by = c("Tm"))
 
 # Merge the datasets based on a common identifier (e.g., team)
 combined_batting_logos <- merge(combined_batting, mlb_logos, by.x = "Tm", by.y = "team_name")
@@ -67,29 +63,34 @@ combined_batting_logos$non_HR_slugging <- ((combined_batting_logos$H - (combined
 
 avg_nonHr_slg <- mean(combined_batting_logos$non_HR_slugging, na.rm = TRUE)
 
+correlation_coefficient_ev_slg <- cor(combined_batting_logos$EV, combined_batting_logos$SLG, use = "complete.obs")
+correlation_coefficient_ev_slg_noHR <- cor(combined_batting_logos$EV, combined_batting_logos$non_HR_slugging, use = "complete.obs")
+
 ggplot(combined_batting_logos, aes(x = EV, y = SLG)) +
   geom_image(aes(image = team_logo_espn), size = 0.1) + 
   geom_vline(xintercept = avg_ev, linetype = "dashed") +
   geom_hline(yintercept = avg_slg, linetype = "dashed") +
-  labs(title = "Exit Velocity vs. Slugging Percentage by Team, 2023 MLB Season",
+  labs(title = "Slugging Percentage vs Exit Velocity by Team, 2023 MLB Season",
        x = "Exit Velocity (EV)",
        y = "Slugging Percentage (SLG)",
        color = "Team") +
   scale_x_continuous(
     limits = c(87, 91) #breaks
   ) +
-  scale_y_continuous(limits = c(0.37, 0.5)) + 
+  scale_y_continuous(limits = c(0.37, 0.501)) + 
   theme_minimal() +
     theme(
       plot.title = element_text(hjust = 0.5),
       panel.grid.major = element_line(color = "gray", linetype = "dashed")
-    ) 
+    ) +
+  annotate("text", x = 91, y = 0.4, label = paste("Correlation:", round(correlation_coefficient_ev_slg, 5)), 
+           hjust = 1, vjust = 0, size = 3, color = "red")
 
 ggplot(combined_batting_logos, aes(x = EV, y = non_HR_slugging)) +
   geom_image(aes(image = team_logo_espn), size = 0.1) + 
   geom_vline(xintercept = avg_ev, linetype = "dashed") +
   geom_hline(yintercept = avg_nonHr_slg, linetype = "dashed") +
-  labs(title = "Exit Velocity vs. Non-HR Slugging Percentage by Team, 2023 MLB Season",
+  labs(title = "Non-HR Slugging Percentage vs Exit Velocity by Team, 2023 MLB Season",
        x = "Exit Velocity (EV)",
        y = "Non-HR Slugging Percentage",
        color = "Team") + 
@@ -97,6 +98,8 @@ ggplot(combined_batting_logos, aes(x = EV, y = non_HR_slugging)) +
   theme(
     plot.title = element_text(hjust = 0.5),
     panel.grid.major = element_line(color = "gray", linetype = "dashed")
-  ) 
+  ) +
+  annotate("text", x = 91, y = 0.3, label = paste("Correlation:", round(correlation_coefficient_ev_slg_noHR, 5)), 
+           hjust = 1, vjust = 0, size = 3, color = "red")
 
 #https://twitter.com/TotallyREALSpo1/status/1794970451715756266
