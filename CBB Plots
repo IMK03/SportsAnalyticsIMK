@@ -1,72 +1,24 @@
 #https://x.com/TotallyREALSpo1/status/1795697918898286729
 
-
-bigTen_cbb_202324 <- read.csv("C:\\Users\\imksy\\Documents\\big ten cbb 202324.csv")
-
-bigTen_logos <- mbb_logos %>%
-  filter(group_id == 7)
-
-bigTen_cbb_202324 <- bigTen_cbb_202324 %>%
-  left_join(bigTen_logos, by = c("School" = "short_name"))
-
-correlation_coefficient <- cor(bigTen_cbb_202324$Pace, bigTen_cbb_202324$ORtg, use = "complete.obs")
-
-
-ggplot(bigTen_cbb_202324, aes(x = Pace, y = ORtg)) + 
-  geom_image(aes(image = logo), size = 0.1) + 
-  geom_vline(xintercept = mean(bigTen_cbb_202324$Pace, na.rm = TRUE), linetype = "dashed") +
-  geom_hline(yintercept = mean(bigTen_cbb_202324$ORtg, na.rm = TRUE), linetype = "dashed") +
-  labs(x = "Pace (Possessions per 40 minutes)", y = "Offensive Rating (Points scored per 100 possessions)", title = "Big Ten Offensive Rating vs Pace, 2023-24") +
-  scale_y_continuous(limits = c(95.0, 120.0), breaks = seq(95.0, 120.0, by = 5.0)) +
-  scale_x_continuous(limits = c(64, 74), breaks = seq(64, 74, by = 2)) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5),
-    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
-    legend.position = "none"
-  ) +
-  annotate("text", x = 74, y = 95, label = paste("Correlation:", round(correlation_coefficient, 5)), 
-           hjust = 1, vjust = 0, size = 3, color = "red")
-
-# Calculate new statistics and create the Four_Factors aggregate stat
-bigTen_cbb_202324 <- bigTen_cbb_202324 %>%
-  mutate(
-    ORB_percent = ORB / (FGA - FG),
-    TOV_percent = TOV / (FGA + 0.475 * FTA + AST + TOV),
-    FTAR = FTA / FGA,
-    Four_Factors = eFG. + ORB_percent + FTAR - TOV_percent
-  )
-
-correlation_coefficient_nrtg_ff <- cor(bigTen_cbb_202324$Four_Factors, bigTen_cbb_202324$NRtg, use = "complete.obs")
-
-
-
-ggplot(bigTen_cbb_202324, aes(x = Four_Factors, y = NRtg)) + 
-  geom_image(aes(image = logo), size = 0.1) + 
-  geom_vline(xintercept = mean(bigTen_cbb_202324$Four_Factors, na.rm = TRUE), linetype = "dashed") +
-  geom_hline(yintercept = mean(bigTen_cbb_202324$NRtg, na.rm = TRUE), linetype = "dashed") +
-  labs(x = "Four Factors Aggregate", y = "Net Rating (Net Point differential per 100 possessions)", title = "Big Ten Net Rating vs Four Factors, 2023-24") +
-  scale_y_continuous(limits = c(-10.0, 20.0), breaks = seq(-10.0, 20.0, by = 5.0)) +
-  scale_x_continuous(limits = c(0.95, 1.2658922), breaks = seq(0.95, 1.25, by = 0.05)) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5),
-    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
-    legend.position = "none"
-  ) +
-  annotate("text", x = 1.2, y = -10, label = paste("Correlation:", round(correlation_coefficient_nrtg_ff, 5)), 
-           hjust = 1, vjust = 0, size = 3, color = "red")
-
 # Read the datasets
 acc_202324 <- read.csv("C:\\Users\\imksy\\Documents\\acc sr cbb.csv")
 bigEast_202324 <- read.csv("C:\\Users\\imksy\\Documents\\big east sr cbb.csv")
 big12_202324 <- read.csv("C:\\Users\\imksy\\Documents\\Big 12 sports reference.csv")
 sec_202324 <- read.csv("C:\\Users\\imksy\\Documents\\sec sports reference cbb.csv")
 pac12_202324 <- read.csv("C:\\Users\\imksy\\Documents\\pac 12 cbb sports reference.csv")
+bigTen_202324 <- read.csv("C:\\Users\\imksy\\Documents\\big ten cbb 202324.csv")
 
-#pac12_202324 <- pac12_202324 %>% mutate(School = ifelse(School == "Washington State", "Washington St", School))
+bigTen_defense_202324 <- read.csv("C:\\Users\\imksy\\Documents\\Big Ten CBB Analytics 202324.csv")
 
-  
+# Define the columns containing percentage values
+percentage_columns <- c('eFG.', 'ORB.', 'TOV.', 'FTA.Rate', 'Opp.eFG.', 'Opp.ORB.', 'Opp.TOV.', 'Opp.FTA.Rate')
+
+# Remove the '%' sign and convert to decimal
+bigTen_defense_202324[, percentage_columns] <- lapply(bigTen_defense_202324[, percentage_columns], function(x) as.numeric(sub("%", "", x)) / 100)
+
+
+# sec_202324 <- sec_202324 %>% mutate(School = ifelse(School == "Mississippi St", "Mississippi State", School))
+
 
 # Define a function to process each dataset
 process_dataset <- function(df, conference_name, group_id) {
@@ -76,7 +28,7 @@ process_dataset <- function(df, conference_name, group_id) {
   
   # Join logos with the dataset
   df <- df %>%
-    left_join(logos, by = c("School" = "short_name")) %>%
+    left_join(logos, by = c("School" = "team")) %>%
     mutate(
       ORB_percent = ORB / (FGA - FG),
       TOV_percent = TOV / (FGA + 0.475 * FTA + AST + TOV),
@@ -85,25 +37,43 @@ process_dataset <- function(df, conference_name, group_id) {
     )
   
   # Calculate the correlation coefficient
-  correlation_coefficient_nrtg_ff <- cor(df$Four_Factors, df$NRtg, use = "complete.obs")
+  correlation_coefficient_ortg_ff <- cor(df$Four_Factors, df$ORtg, use = "complete.obs")
+  correlation_coefficient_ortg_pace <- cor(df$Pace, df$ORtg, use = "complete.obs")
   
   # Create the scatter plot
-  ggplot(df, aes(x = Four_Factors, y = NRtg)) + 
-    geom_image(aes(image = logo), size = 0.1) + 
+  ggplot(df, aes(x = Four_Factors, y = ORtg)) +
+    geom_image(aes(image = logo), size = 0.1) +
     geom_vline(xintercept = mean(df$Four_Factors, na.rm = TRUE), linetype = "dashed") +
-    geom_hline(yintercept = mean(df$NRtg, na.rm = TRUE), linetype = "dashed") +
-    labs(x = "Four Factors Aggregate", y = "Net Rating (Net Point differential per 100 possessions)", 
-         title = paste(conference_name, "Net Rating vs Four Factors, 2023-24")) +
-    #scale_y_continuous(limits = c(-10.0, 20.0), breaks = seq(-10.0, 20.0, by = 5.0)) +
-    #scale_x_continuous(limits = c(0.95, 1.27), breaks = seq(0.95, 1.27, by = 0.05)) +
+    geom_hline(yintercept = mean(df$ORtg, na.rm = TRUE), linetype = "dashed") +
+    labs(x = "Four Factors Aggregate", y = "Offensive Rating (Points scored per 100 possessions)",
+         title = paste(conference_name, "Offensive Rating vs Four Factors, 2023-24")) +
+    scale_y_continuous(limits = c(94.7, 125.0), breaks = seq(95.0, 125.0, by = 5.0)) +
+    scale_x_continuous(limits = c(0.75, 1.27), breaks = seq(0.75, 1.25, by = 0.125)) +
     theme_minimal() +
     theme(
       plot.title = element_text(hjust = 0.5),
       panel.grid.major = element_line(color = "gray", linetype = "dashed"),
       legend.position = "none"
     ) +
-    annotate("text", x = 1.2, y = -10, label = paste("Correlation:", round(correlation_coefficient_nrtg_ff, 5)), 
+    annotate("text", x = 1.2, y = 95, label = paste("Correlation:", round(correlation_coefficient_ortg_ff, 5)),
              hjust = 1, vjust = 0, size = 3, color = "red")
+  
+  # ggplot(df, aes(x = Pace, y = ORtg)) + 
+  #   geom_image(aes(image = logo), size = 0.1) + 
+  #   geom_vline(xintercept = mean(df$Pace, na.rm = TRUE), linetype = "dashed") +
+  #   geom_hline(yintercept = mean(df$ORtg, na.rm = TRUE), linetype = "dashed") +
+  #   labs(x = "Pace (Possessions per 40 minutes)", y = "Offensive Rating (Points scored per 100 possessions)", 
+  #        title = paste(conference_name, "Offensive Rating vs Pace, 2023-24")) +
+  #   scale_y_continuous(limits = c(94.7, 125.0), breaks = seq(95.0, 125.0, by = 5.0)) +
+  #   scale_x_continuous(limits = c(60, 75), breaks = seq(60, 75, by = 3)) +
+  #   theme_minimal() +
+  #   theme(
+  #     plot.title = element_text(hjust = 0.5),
+  #     panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+  #     legend.position = "none"
+  #   ) +
+  #   annotate("text", x = 74, y = 95, label = paste("Correlation:", round(correlation_coefficient_ortg_pace, 5)), 
+  #            hjust = 1, vjust = 0, size = 3, color = "red")
 }
 
 #Process each dataset and generate the plots
@@ -112,6 +82,7 @@ bigEast_plot <- process_dataset(bigEast_202324, "Big East", 4)
 big12_plot <- process_dataset(big12_202324, "Big 12", 8)
 sec_plot <- process_dataset(sec_202324, "SEC", 23)
 pac12_plot <- process_dataset(pac12_202324, "Pac-12", 21)
+bigTen_plot <- process_dataset(bigTen_202324, "Big Ten", 7)
 
 #Display the plots
 print(acc_plot)
@@ -119,3 +90,42 @@ print(bigEast_plot)
 print(big12_plot)
 print(sec_plot)
 print(pac12_plot)
+print(bigTen_plot)
+
+# Define a function to process each dataset
+process_dataset_defense <- function(df, conference_name, group_id) {
+  # Filter logos for the specific conference
+  logos <- mbb_logos %>%
+    filter(group_id == group_id)
+  
+  # Join logos with the dataset
+  df <- df %>%
+    left_join(logos, by = c("Team.Name" = "team")) %>%
+    mutate(
+      Four_Factors_Defense = Opp.eFG. + Opp.ORB. - Opp.TOV. + Opp.FTA.Rate
+    )
+  
+  # Calculate the correlation coefficient
+  correlation_coefficient_drtg_ff <- cor(df$Four_Factors_Defense, df$DRtg, use = "complete.obs")
+  # Create the scatter plot
+  ggplot(df, aes(x = Four_Factors_Defense, y = DRtg)) +
+    geom_image(aes(image = logo), size = 0.1) +
+    geom_vline(xintercept = mean(df$Four_Factors_Defense, na.rm = TRUE), linetype = "dashed") +
+    geom_hline(yintercept = mean(df$DRtg, na.rm = TRUE), linetype = "dashed") +
+    labs(x = "Defensive Four Factors Aggregate", y = "Defensive Rating (Points allowed per 100 possessions)",
+         title = paste(conference_name, "Defensive Rating vs Defensive Four Factors, 2023-24")) +
+    scale_y_reverse(limits = c(116, 98), breaks = seq(115.0, 100.0, by = -3.0)) +
+    scale_x_reverse(limits = c(1.10, 0.8), breaks = seq(1.10, 0.8, by = -0.10)) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+      legend.position = "none"
+    ) +
+    annotate("text", x = 1.05, y = 115, label = paste("Correlation:", round(correlation_coefficient_drtg_ff, 5)),
+             hjust = 1, vjust = 0, size = 3, color = "red")
+
+}
+
+bigTen_plot_Defense <- process_dataset_defense(bigTen_defense_202324, "Big Ten", 7)
+print(bigTen_plot_Defense)
