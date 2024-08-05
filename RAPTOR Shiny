@@ -1,0 +1,234 @@
+#Data from 538 and Neil Paine
+
+library(shiny)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(hoopR)
+library(png)
+library(grid)
+library(ggimage)
+library(plotly)
+
+
+
+# Load data
+latest_data <- read.csv("C:\\Users\\imksy\\Downloads\\latest_RAPTOR_by_player.csv") #2023 season 538 RAPTOR data
+historical_data <- read.csv("C:\\Users\\imksy\\Downloads\\historical_RAPTOR_by_player.csv") #previous decade 538 RAPTOR data
+estimated_data <- read.csv("C:\\Users\\imksy\\Downloads\\2024-NBA-Stat-Sheet - Players by Player.csv") #scraped data eRT from Neil Paine
+
+# Get NBA logos
+tictoc::tic()
+progressr::with_progress({
+  nba_logos <- hoopR::espn_nba_teams()
+})
+
+
+# Update team abbreviations
+team_logos <- nba_logos %>%
+  select(abbreviation, logo) %>%
+  rename(team_abbreviation = abbreviation) %>%
+  mutate(team_abbreviation = recode(team_abbreviation,
+                                    "CHA" = "CHO",
+                                    "BKN" = "BRK",
+                                    "PHX" = "PHO",
+                                    "NY" = "NYK",
+                                    "GS" = "GSW",
+                                    "UTAH" = "UTA",
+                                    "NO" = "NOP",
+                                    "WSH" = "WAS", 
+                                    "SA" = "SAS"))
+  
+
+# Merge with estimated_data
+merged_data <- estimated_data %>%
+  left_join(team_logos, by = c("Franch" = "team_abbreviation"))
+
+# Combine data for the second tab
+combined_data <- bind_rows(latest_data, historical_data) %>%
+  group_by(player_name) %>%
+  mutate(career_RAPTOR_total = sum(raptor_total, na.rm = TRUE),
+            total_minutes = sum(mp, na.rm = TRUE),
+            RAPTOR_per_minute = sum(raptor_total, na.rm = TRUE) / sum(mp, na.rm = TRUE)) %>%
+  filter(total_minutes >= 10000) %>%  # Include only players with at least 10,000 minutes
+  mutate(RAPTOR_per_minute = format(RAPTOR_per_minute, digits = 10, scientific = FALSE) %>% as.numeric())
+
+# Define UI
+ui <- fluidPage(
+  titlePanel("NBA RAPTOR Statistics"),
+  navbarPage("Data",
+             tabPanel("Estimated Raptor Data by Season",
+                      sidebarLayout(
+                        sidebarPanel(
+                          selectInput("Player", "Select Player:", choices = NULL)
+                        ),
+                        mainPanel(
+                          plotOutput("raptorPlot"),
+                          tableOutput("raptorTable"),
+                          downloadButton("downloadData", "Download Data")
+                        )
+                      )),
+             tabPanel("538 Raptor Data Careers",
+                        mainPanel(
+                          plotlyOutput("combinedPlot"),
+                          tableOutput("combinedTable"),
+                          downloadButton("downloadCombinedData", "Download Data")
+                        )
+                      ))
+  )
+
+
+# Define server logic
+server <- function(input, output, session) {
+  
+  # Update select input for estimated data tab
+  observe({
+    updateSelectizeInput(session, "Player",
+                         choices = unique(merged_data$Player),
+                         server = TRUE)
+  })
+  
+  # Prepare combined data
+  combined_data <- reactive({
+    bind_rows(latest_data, historical_data) %>%
+      group_by(player_name) %>%
+      summarise(career_RAPTOR_total = sum(raptor_total, na.rm = TRUE),
+                total_minutes = sum(mp, na.rm = TRUE),
+                RAPTOR_per_minute = sum(raptor_total, na.rm = TRUE) / sum(mp, na.rm = TRUE)) %>%
+      filter(total_minutes >= 10000) %>%
+      mutate(RAPTOR_per_minute = as.numeric(format(RAPTOR_per_minute, digits = 10, scientific = FALSE)))
+  })
+  
+  # Plot for estimated data
+  output$raptorPlot <- renderPlot({
+    selected_player_data <- merged_data %>%
+      filter(Player == input$Player, Type == "RS") %>%
+      arrange(Year)
+    
+    if (nrow(selected_player_data) == 0) {
+      return(ggplot() + 
+               labs(title = "No data available", x = NULL, y = NULL) + 
+               theme_void())
+    }
+    
+    min_eRT <- min(selected_player_data$eRT, na.rm = TRUE)
+    max_eRT <- max(selected_player_data$eRT, na.rm = TRUE)
+    
+    ggplot(selected_player_data, aes(x = Year, y = eRT, group = Player)) +
+      geom_line() +
+      geom_image(aes(image = logo), size = 0.1) +
+      scale_x_continuous(breaks = unique(selected_player_data$Year), 
+                         labels = unique(selected_player_data$Year)) +
+      scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                         limits = c(min_eRT, max_eRT)) +
+      theme_minimal() +
+      labs(title = paste("Year-by-Year RAPTOR for", input$Player),
+           x = "Year", y = "RAPTOR Total") +
+      theme(legend.position = "bottom") +
+      guides(shape = guide_legend(title = "Team")) +
+      theme(panel.grid.major = element_line(color = "grey"),
+            panel.grid.minor = element_line(color = "lightgrey")) + 
+      annotate("text", x = Inf, y = -Inf, label = "Data courtesy of Neil Paine",
+               hjust = 1, vjust = -1, size = 3, color = "black", fontface = "italic")
+  })
+  
+  # Table for estimated data
+  output$raptorTable <- renderTable({
+    selected_player_data <- merged_data %>%
+      filter(Player == input$Player, Type == "RS") %>%
+      arrange(Year)
+    
+    selected_player_data
+  })
+  
+  # Download data for estimated data
+  output$downloadData <- downloadHandler(
+    filename = function() { "career_RAPTOR_data.csv" },
+    content = function(file) {
+      write.csv(merged_data, file)
+    }
+  )
+  
+  # Plot for combined data
+  output$combinedPlot <- renderPlotly({
+    data <- combined_data()
+    
+    # Calculate medians
+    x_median <- median(data$RAPTOR_per_minute, na.rm = TRUE)
+    y_median <- median(data$career_RAPTOR_total, na.rm = TRUE)
+    
+    # Assign quadrant colors
+    data <- data %>%
+      mutate(color = case_when(
+        RAPTOR_per_minute > x_median & career_RAPTOR_total > y_median ~ "green",
+        RAPTOR_per_minute > x_median & career_RAPTOR_total <= y_median ~ "orange",
+        RAPTOR_per_minute <= x_median & career_RAPTOR_total > y_median ~ "yellow",
+        TRUE ~ "red"
+      ))
+    
+    p <- plot_ly(data, x = ~RAPTOR_per_minute, y = ~career_RAPTOR_total, 
+                 type = 'scatter', mode = 'markers',
+                 text = ~paste("Player: ", player_name, "<br>Total RAPTOR: ", career_RAPTOR_total, "<br>RAPTOR per Minute: ", RAPTOR_per_minute, "<br>Minutes Played: ", total_minutes),
+                 hoverinfo = 'text',
+                 marker = list(size = 10, color = ~color, opacity = 0.6)) %>%
+      layout(title = "RAPTOR per Minute vs. Total RAPTOR",
+             xaxis = list(title = "RAPTOR per Minute",
+                          gridcolor = 'lightgrey', # Color of the gridlines
+                          gridwidth = 1),          # Width of the gridlines
+             yaxis = list(title = "Total RAPTOR",
+                          gridcolor = 'lightgrey', # Color of the gridlines
+                          gridwidth = 1),          # Width of the gridlines
+             hovermode = 'closest') %>%
+      add_segments(x = x_median, xend = x_median,
+                   y = min(data$career_RAPTOR_total, na.rm = TRUE), yend = max(data$career_RAPTOR_total, na.rm = TRUE),
+                   line = list(color = 'grey', width = 2, dash = 'dot'), # Dotted line
+                   name = 'X Median') %>%
+      add_segments(x = min(data$RAPTOR_per_minute, na.rm = TRUE), xend = max(data$RAPTOR_per_minute, na.rm = TRUE),
+                   y = y_median, yend = y_median,
+                   line = list(color = 'grey', width = 2, dash = 'dot'), # Dotted line
+                   name = 'Y Median') %>%
+      event_register("plotly_hover") %>%
+      event_register("plotly_unhover")
+    
+    p
+  })
+  
+  # # Table for combined data with selected player's statistics
+  # output$combinedTable <- renderTable({
+  #   click_data <- event_data("plotly_click")
+  #   
+  #   # Handle click data and errors
+  #   if (is.null(click_data) || is.null(click_data$text)) {
+  #     return(NULL)
+  #   }
+  #   
+  #   # Extract player name from the click event data
+  #   clicked_player <- stringr::str_extract(click_data$text, "Player: (.+?)<br>") %>%
+  #     stringr::str_remove("Player: ")
+  #   
+  #   if (!is.na(clicked_player) && clicked_player != "") {
+  #     filtered_data <- combined_data() %>%
+  #       filter(player_name == clicked_player)
+  #     
+  #     if (nrow(filtered_data) > 0) {
+  #       filtered_data %>%
+  #         mutate(RAPTOR_per_minute = sprintf("%.10f", RAPTOR_per_minute))
+  #     } else {
+  #       return(NULL)
+  #     }
+  #   } else {
+  #     return(NULL)
+  #   }
+  # })
+  
+  # Download data for combined data
+  output$downloadCombinedData <- downloadHandler(
+    filename = function() { "combined_RAPTOR_data.csv" },
+    content = function(file) {
+      write.csv(combined_data(), file)
+    }
+  )
+}
+
+# Run the app
+shinyApp(ui = ui, server = server)
