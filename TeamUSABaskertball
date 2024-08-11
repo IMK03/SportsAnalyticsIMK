@@ -1,0 +1,43 @@
+# Load necessary libraries
+library(ggplot2)
+library(tidyverse)
+
+# Create the data
+olympics_data <- data.frame(
+  Year = c(1992, 1996, 2000, 2004, 2008, 2012, 2016, 2021, 2024),
+  Location = c("Barcelona", "Atlanta", "Sydney", "Athens", "Beijing", "London", "Rio", "Tokyo", "Paris"),
+  PointDifferential = c(43.8, 31.6, 21.6, 4.6, 27.9, 32.1, 22.5, 20.0, 19.0),
+  NonUSA_NBA_Players = c(12, 10, 12, 19, 28, 47, 50, 53, 69)
+)
+
+# Plot
+ggplot(olympics_data, aes(x = NonUSA_NBA_Players, y = PointDifferential)) +
+  geom_point(size = 3) +
+  geom_text(aes(label = paste(Location, Year, sep = ", ")), vjust = -1.0, check_overlap = TRUE) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "blue") +
+  scale_x_continuous(limits = c(0, 70), breaks = seq(0, 70, by = 10)) +
+  scale_y_continuous(limits = c(0, 50), breaks = seq(0, 50, by = 10)) +
+  labs(x = "Number of Non-USA NBA Players (Lev Akabas)", y = "Team USA Average Point Differential") +
+  ggtitle("Team USA Performance in Summer Olympics Basketball") +
+  theme_minimal() +
+  theme(panel.grid.major = element_line(color = "gray", linetype = "solid"),
+        panel.grid.minor = element_line(color = "gray", linetype = "dotted"))
+
+world_cup_data <- data.frame( #1998 greece lockout
+  Year = c(1994, 2002, 2006, 2010, 2014, 2019, 2023),
+  Location = c("Canada",  "USA", "Japan", "Turkey", "Spain", "China", "Indonesia"),
+  PointDifferential = c(37.8, 17.0, 20.4, 24.6, 33.0, 13.1, 16.9), 
+  total_NBA_players = c(15, 25, 39, 41, 50, 54, 55) #only active, doesn't include former or future, like 2023 has 107 total but 55 active
+) #Might need to include finishing place and winning percentage
+
+ggplot(world_cup_data, aes(x = total_NBA_players, y = PointDifferential)) +
+  geom_point(size = 3) +
+  geom_text(aes(label = paste(Location, Year, sep = ", ")), vjust = -1.0, check_overlap = TRUE) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "blue") +
+  scale_x_continuous(limits = c(10, 60), breaks = seq(10, 60, by = 10)) +
+  scale_y_continuous(limits = c(10, 40), breaks = seq(10, 40, by = 10)) +
+  labs(x = "Number of NBA Players in Tournament", y = "Team USA Average Point Differential") +
+  ggtitle("Team USA Performance in FIBA World Cup") +
+  theme_minimal() +
+  theme(panel.grid.major = element_line(color = "gray", linetype = "solid"),
+        panel.grid.minor = element_line(color = "gray", linetype = "dotted"))
