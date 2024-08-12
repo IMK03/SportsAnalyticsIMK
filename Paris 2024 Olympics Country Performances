@@ -1,0 +1,29 @@
+library(ggplot2)
+library(tidyverse)
+library(ggrepel)
+
+Paris_2024 <- data.frame(
+  Country = c("USA", "France", "Australia", "Germany", "Japan", "China", "Spain", "Italy", "Britain", "Canada", "Brazil", "Netherlands", "Poland", "New Zealand", "Hungary", "Belgium", "South Africa", "Egypt", "South Korea", "Ukraine", "Argentina", "Ireland", "Switzerland", "Denmark", "Sweden", "Serbia", "Czech", "India", "Mexico", "Norway", "Romania", "Turkey", "Greece", "Uzbekistan", "Kenya"), 
+  Athletes = c(592, 573, 460, 428, 403, 388, 383, 371, 327, 315, 274, 258, 210, 195, 170, 165, 149, 148, 141, 140, 136, 134, 127, 124, 117, 113, 111, 110, 107, 107, 106, 102, 100, 90, 83), #per NBC Chicago, feel like there are different counts
+  Gold_Medals = c(40, 16, 18, 12, 20, 40, 5, 12, 14, 9, 3, 15, 1, 10, 6, 3, 1, 1, 13, 3, 1, 4, 1, 2, 4, 3, 3, 0, 0, 4, 3, 0, 1, 8, 4), 
+  Total_Medals = c(126, 64, 53, 33, 45, 91, 18, 40, 65, 27, 20, 34, 10, 20, 19, 10, 6, 3, 32, 12, 3, 7, 8, 9, 11, 5, 5, 6, 5, 8, 9, 8, 8, 13, 11) #only include countries with 100 athletes or more, OR 10+ medals
+)
+
+Paris_2024 <- Paris_2024 %>%
+  mutate(
+    Gold_Medal_Rate = Gold_Medals / Athletes,
+    Total_Medal_Rate = Total_Medals / Athletes
+  )
+
+ggplot(Paris_2024, aes(x = Gold_Medal_Rate, y = Total_Medal_Rate)) +
+  geom_point(aes(size = Athletes), alpha = 0.7) +
+  geom_text_repel(aes(label = Country), vjust = -1, hjust = 1, max.overlaps = 50) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "blue") + # Trendline
+  labs(x = "Gold Medal Rate (Gold Medals / Athletes)", y = "Total Medal Rate (Total Medals / Athletes)",
+       title = "Gold and Total Medal Rates per Athlete by Country (Paris Summer Olympics 2024)",
+       size = "Number of Athletes") +
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_line(color = "gray", linetype = "solid"), # Major gridlines
+    panel.grid.minor = element_line(color = "gray", linetype = "dotted")  # Minor gridlines
+  )
