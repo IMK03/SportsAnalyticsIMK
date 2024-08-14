@@ -1,0 +1,95 @@
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+
+df1 <- read_csv("C:\\Users\\imksy\\Downloads\\all_womens_foil_fencer_bio_data_May_13_2021_cleaned.csv")
+df2 <- read_csv("C:\\Users\\imksy\\Downloads\\all_womens_foil_fencer_rankings_data_May_13_2021_cleaned.csv")
+
+# Combine the datasets by "id"
+combined_data <- df1 %>%
+  inner_join(df2, by = "id")
+
+# Separate the data by hand and weapon
+left_right_comparison <- combined_data %>%
+  filter(hand %in% c("Left", "Right")) %>%
+  group_by(weapon, hand)
+
+# Plot the comparison for each weapon
+ggplot(left_right_comparison, aes(x = hand, y = points, fill = hand)) +
+  geom_boxplot() +
+  facet_wrap(~ weapon) +  # Separate by weapon
+  labs(title = "Comparison of Points by Handedness and Weapon",
+       x = "Handedness",
+       y = "Points",
+       fill = "Hand") +
+  theme_minimal()
+
+# Filter the combined dataset for Foil
+foil_data <- combined_data %>%
+  filter(weapon == "Foil" & rank <= 250 & hand %in% c("Left", "Right")) #only looking at top 250 so those who get points in their season competition
+
+# Calculate mean points for each hand in Foil
+foil_means <- foil_data %>%
+  group_by(hand) %>%
+  summarise(mean_points = mean(points, na.rm = TRUE))
+
+ggplot(foil_data, aes(x = hand, y = points, fill = hand)) +
+  geom_boxplot() +
+  stat_summary(fun = mean, geom = "point", shape = 20, size = 3, color = "red") + # Add mean points as red dots
+  geom_text(data = foil_means, aes(label = round(mean_points, 2), y = mean_points), 
+            position = position_dodge(width = 0.75), vjust = -1, size = 4, color = "red") + # Add mean values as text
+  labs(title = "Comparison of Points by Handedness in Foil Fencing, top 250 per competition",
+       x = "Handedness",
+       y = "Points",
+       fill = "Hand") +
+  theme_minimal()
+
+
+# Filter the combined dataset for Foil
+epee_data <- combined_data %>%
+  filter(weapon == "Epee"  & hand %in% c("Left", "Right")) #only looking at top 250 so those who get points in their season competition
+
+# Calculate mean points for each hand in Foil
+epee_means <- epee_data %>%
+  group_by(hand) %>%
+  summarise(mean_points = mean(points, na.rm = TRUE))
+
+ggplot(epee_data, aes(x = hand, y = points, fill = hand)) +
+  geom_boxplot() +
+  stat_summary(fun = mean, geom = "point", shape = 20, size = 3, color = "red") + # Add mean points as red dots
+  geom_text(data = epee_means, aes(label = round(mean_points, 2), y = mean_points), 
+            position = position_dodge(width = 0.75), vjust = -1, size = 4, color = "red") + # Add mean values as text
+  labs(title = "Comparison of Points by Handedness in Epee Fencing",
+       x = "Handedness",
+       y = "Points",
+       fill = "Hand") +
+  theme_minimal()
+
+# Filter the combined dataset for Foil
+sabre_data <- combined_data %>%
+  filter(weapon == "Sabre"  & hand %in% c("Left", "Right")) #only looking at top 250 so those who get points in their season competition
+
+# Calculate mean points for each hand in Foil
+sabre_means <- sabre_data %>%
+  group_by(hand) %>%
+  summarise(mean_points = mean(points, na.rm = TRUE))
+
+ggplot(sabre_data, aes(x = hand, y = points, fill = hand)) +
+  geom_boxplot() +
+  stat_summary(fun = mean, geom = "point", shape = 20, size = 3, color = "red") + # Add mean points as red dots
+  geom_text(data = sabre_means, aes(label = round(mean_points, 2), y = mean_points), 
+            position = position_dodge(width = 0.75), vjust = -1, size = 4, color = "red") + # Add mean values as text
+  labs(title = "Comparison of Points by Handedness in Sabre Fencing",
+       x = "Handedness",
+       y = "Points",
+       fill = "Hand") +
+  theme_minimal()
+
+# Group the data by weapon and hand, then count the number of fencers in each group
+weapon_hand_counts <- combined_data %>%
+  filter(hand %in% c("Left", "Right"), rank <= 250) %>%  # Ensure only Left and Right handed fencers are included
+  group_by(weapon, hand) %>%
+  summarise(count = n())
+
+# View the results
+weapon_hand_counts
