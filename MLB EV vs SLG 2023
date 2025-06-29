@@ -7,9 +7,7 @@ library(ggplot2)
 library(ggrepel)
 library(tidyr)
 library(ggimage)
-library(hockeyR)
 library(mlbplotR)
-library(ggimage)
 help(package = "baseballr")
 tictoc::tic()
 progressr::with_progress({
@@ -19,17 +17,12 @@ tictoc::toc()
 
 tictoc::tic()
 progressr::with_progress({
-  mlb_logos <- baseballr::mlb_teams() #select season
+  mlb_logos <- baseballr::mlb_teams("2024") #select season
 })
 tictoc::toc()
 
-mlb_logos <- mlb_logos %>%
-  filter(league_id %in% c("103", "104"))
-
-
 mlb_logos <- mlbplotR::load_mlb_teams() |> 
-  dplyr::filter(!team_abbr %in% c("AL", "NL", "MLB")) |> 
-
+  dplyr::filter(!team_abbr %in% c("AL", "NL", "MLB"))
 
 # Get team batting leaderboard data
 tictoc::tic()
@@ -56,6 +49,8 @@ combined_batting_logos <- merge(combined_batting, mlb_logos, by.x = "Tm", by.y =
 
 avg_ev <- mean(combined_batting_logos$EV, na.rm = TRUE)
 avg_slg <- mean(combined_batting_logos$SLG, na.rm = TRUE)
+avg_obp <- mean(combined_batting_logos$OBP, na.rm = TRUE)
+avg_ops <- mean(combined_batting_logos$OPS, na.rm = TRUE)
 
 # Calculate non_HR_slugging
 combined_batting_logos$non_HR_slugging <- ((combined_batting_logos$H - (combined_batting_logos$X2B + combined_batting_logos$X3B) + (2 * combined_batting_logos$X2B) + (3 * combined_batting_logos$X3B)) / (combined_batting_logos$AB - combined_batting_logos$HR))
@@ -64,6 +59,8 @@ combined_batting_logos$non_HR_slugging <- ((combined_batting_logos$H - (combined
 avg_nonHr_slg <- mean(combined_batting_logos$non_HR_slugging, na.rm = TRUE)
 
 correlation_coefficient_ev_slg <- cor(combined_batting_logos$EV, combined_batting_logos$SLG, use = "complete.obs")
+correlation_coefficient_ev_obp <- cor(combined_batting_logos$EV, combined_batting_logos$OBP, use = "complete.obs")
+correlation_coefficient_ev_ops <- cor(combined_batting_logos$EV, combined_batting_logos$OPS, use = "complete.obs")
 correlation_coefficient_ev_slg_noHR <- cor(combined_batting_logos$EV, combined_batting_logos$non_HR_slugging, use = "complete.obs")
 
 ggplot(combined_batting_logos, aes(x = EV, y = SLG)) +
@@ -86,6 +83,45 @@ ggplot(combined_batting_logos, aes(x = EV, y = SLG)) +
   annotate("text", x = 91, y = 0.4, label = paste("Correlation:", round(correlation_coefficient_ev_slg, 5)), 
            hjust = 1, vjust = 0, size = 3, color = "red")
 
+ggplot(combined_batting_logos, aes(x = EV, y = OBP)) +
+  geom_image(aes(image = team_logo_espn), size = 0.1) + 
+  geom_vline(xintercept = avg_ev, linetype = "dashed") +
+  geom_hline(yintercept = avg_obp, linetype = "dashed") +
+  labs(title = "On Base Percentage vs Exit Velocity by Team, 2023 MLB Season",
+       x = "Exit Velocity (EV)",
+       y = "On Base Percentage (OBP))",
+       color = "Team") +
+  scale_x_continuous(limits = c(87, 91)) +
+  scale_y_continuous(limits = c(0.28, 0.36)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed")
+  ) +
+  annotate("text", x = 91, y = 0.4, label = paste("Correlation:", round(correlation_coefficient_ev_obp, 5)), 
+           hjust = 1, vjust = 0, size = 3, color = "red")
+
+
+ggplot(combined_batting_logos, aes(x = EV, y = OPS)) +
+  geom_image(aes(image = team_logo_espn), size = 0.1) + 
+  geom_vline(xintercept = avg_ev, linetype = "dashed") +
+  geom_hline(yintercept = avg_obp, linetype = "dashed") +
+  labs(title = "OPS vs Exit Velocity by Team, 2023 MLB Season",
+       x = "Exit Velocity (EV)",
+       y = "OPS",
+       color = "Team") +
+  scale_x_continuous(
+    limits = c(87, 91) #breaks
+  ) +
+  scale_y_continuous(limits = c(0.65, 0.85)) + 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed")
+  ) +
+  annotate("text", x = 91, y = 0.4, label = paste("Correlation:", round(correlation_coefficient_ev_ops, 5)), 
+           hjust = 1, vjust = 0, size = 3, color = "red")
+
 ggplot(combined_batting_logos, aes(x = EV, y = non_HR_slugging)) +
   geom_image(aes(image = team_logo_espn), size = 0.1) + 
   geom_vline(xintercept = avg_ev, linetype = "dashed") +
@@ -102,4 +138,28 @@ ggplot(combined_batting_logos, aes(x = EV, y = non_HR_slugging)) +
   annotate("text", x = 91, y = 0.3, label = paste("Correlation:", round(correlation_coefficient_ev_slg_noHR, 5)), 
            hjust = 1, vjust = 0, size = 3, color = "red")
 
+# # Get Statcast data for all batters
+# tictoc::tic()
+# progressr::with_progress({
+#   statcast_data <- baseballr::scrape_statcast_savant_batter_all(start_date = start_date, end_date = end_date)
+# })
+# tictoc::toc()
+
+# Get the plate appearances from the statcast data (if not directly available, 
+# you might need to join with another data source that has plate appearances)
+# For simplicity, let's assume it's included in statcast_data
+
+# # Calculate the weighted average exit velocity per team
+# team_exit_velocity <- statcast_data %>%
+#   group_by(team) %>%
+#   summarize(total_exit_velocity = sum(launch_speed * AB, na.rm = TRUE),
+#             total_AB = sum(AB, na.rm = TRUE),
+#             avg_exit_velocity = total_exit_velocity / total_AB)
+# 
+# # View the team exit velocity data
+# head(team_exit_velocity)
+
+
+# View the data to find the slugging percentage column
+#head(team_batting_data)
 #https://twitter.com/TotallyREALSpo1/status/1794970451715756266
