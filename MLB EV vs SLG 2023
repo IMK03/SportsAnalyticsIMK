@@ -159,6 +159,7 @@ ggplot(combined_batting_logos, aes(x = EV, y = non_HR_slugging)) +
 # # View the team exit velocity data
 # head(team_exit_velocity)
 
+#correlations 0.352 non HR sluggin, 0.711 SLG, 0.658 OPS, 0.470 OBP
 
 # View the data to find the slugging percentage column
 #head(team_batting_data)
