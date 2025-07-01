@@ -10,9 +10,12 @@ library(ggimage)
 progressr::with_progress({
   mbb_pbp <-  hoopR::load_mbb_pbp(2024)
 })
+
+progressr::with_progress({
+  mbb_logos <-  hoopR::espn_mbb_teams(2024)
+})
+
 View(mbb_pbp)
-timeouts = subset(mbb_pbp,type_text %in% c("ShortTimeOut", "End Game", "End Period", "OfficialTVTimeOut"))
-View(timeouts)
 
 progressr::with_progress({
   mbb_stats_team <-  hoopR::load_mbb_team_box()
@@ -28,10 +31,12 @@ illinois_team_stats = subset(mbb_stats_team, team_location %in% c("Illinois"))
 
 illinois_player_stats = subset(mbb_stats_team_other, team_location %in% c("Illinois"))
 
+#try to create metric measuring player impact, then plot it versus minutes or +/-, my own version of PER, tsj_index
+
 illinois_sr_advanced = read.csv("C:\\Users\\imksy\\Documents\\illini advanced sr.csv")
 
 illini_top8 <- illinois_sr_advanced %>%
-  filter(MP >= 400)
+  filter(MP >= 100)
 
 ggplot(illini_top8, aes(x = PER, y = BPM, label = Player, size = MP)) +
   geom_point(color = "orange") +
@@ -39,13 +44,136 @@ ggplot(illini_top8, aes(x = PER, y = BPM, label = Player, size = MP)) +
   #geom_vline(xintercept = avg_un_p2s, linetype = "dashed") +
   #geom_hline(yintercept = avg_epa_play, linetype = "dashed") +
   labs(x = "Player Efficiency Rating (PER)", y = "Box Plus/Minus +/- (BPM)", title = "Fighting Illini Basketball 2023-24 BPM vs PER") +
-  scale_y_continuous(limits = c(3, 12), breaks = seq(3, 12, by = 3)) +
-  scale_x_continuous(limits = c(10, 30), breaks = seq(10, 30, by = 4)) +
+  #scale_y_continuous(limits = c(3, 12), breaks = seq(3, 12, by = 3)) +
+  #scale_x_continuous(limits = c(10, 30), breaks = seq(10, 30, by = 4)) +
   theme_minimal() +
   theme(
     plot.title = element_text(hjust = 0.5),
     panel.grid.major = element_line(color = "gray", linetype = "dashed"),
     legend.position = "none"
   )
+
+illini_2025 = read.csv("C:\\Users\\imksy\\Documents\\illini advanced mbb 2025.csv")
+illini_2025 <- illini_2025 %>%
+  filter(MP >= 100)
+
+ggplot(illini_2025, aes(x = PER, y = BPM, label = Player, size = MP)) +
+  geom_point(color = "orange") +
+  geom_text_repel(max.overlaps = 50) +  # Adjust the label position if needed
+  #geom_vline(xintercept = avg_un_p2s, linetype = "dashed") +
+  #geom_hline(yintercept = avg_epa_play, linetype = "dashed") +
+  labs(x = "Player Efficiency Rating (PER)", y = "Box Plus/Minus +/- (BPM)", title = "Fighting Illini Basketball 2024-25 BPM vs PER") +
+  #scale_y_continuous(limits = c(3, 12), breaks = seq(3, 12, by = 3)) +
+  #scale_x_continuous(limits = c(10, 30), breaks = seq(10, 30, by = 4)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+    legend.position = "none"
+  )
+
+illini_2023 = read.csv("C:\\Users\\imksy\\Documents\\illini23.csv")
+illini_2023 <- illini_2023 %>%
+  filter(MP >= 100)
+
+ggplot(illini_2023, aes(x = PER, y = BPM, label = Player, size = MP)) +
+  geom_point(color = "orange") +
+  geom_text_repel(max.overlaps = 50) +  # Adjust the label position if needed
+  #geom_vline(xintercept = avg_un_p2s, linetype = "dashed") +
+  #geom_hline(yintercept = avg_epa_play, linetype = "dashed") +
+  labs(x = "Player Efficiency Rating (PER)", y = "Box Plus/Minus +/- (BPM)", title = "Fighting Illini Basketball 2022-23 BPM vs PER") +
+  #scale_y_continuous(limits = c(3, 12), breaks = seq(3, 12, by = 3)) +
+  #scale_x_continuous(limits = c(10, 30), breaks = seq(10, 30, by = 4)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+    legend.position = "none"
+  )
+
+illini_2022 = read.csv("C:\\Users\\imksy\\Documents\\illini22.csv")
+illini_2022 <- illini_2022 %>%
+  filter(MP >= 100)
+
+ggplot(illini_2022, aes(x = PER, y = BPM, label = Player, size = MP)) +
+  geom_point(color = "orange") +
+  geom_text_repel(max.overlaps = 50) +  # Adjust the label position if needed
+  #geom_vline(xintercept = avg_un_p2s, linetype = "dashed") +
+  #geom_hline(yintercept = avg_epa_play, linetype = "dashed") +
+  labs(x = "Player Efficiency Rating (PER)", y = "Box Plus/Minus +/- (BPM)", title = "Fighting Illini Basketball 2021-22 BPM vs PER") +
+  #scale_y_continuous(limits = c(3, 12), breaks = seq(3, 12, by = 3)) +
+  #scale_x_continuous(limits = c(10, 30), breaks = seq(10, 30, by = 4)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+    legend.position = "none"
+  )
+
+illini_2021 = read.csv("C:\\Users\\imksy\\Documents\\illini21.csv")
+illini_2021 <- illini_2021 %>%
+  filter(MP >= 100)
+
+ggplot(illini_2021, aes(x = PER, y = BPM, label = Player, size = MP)) +
+  geom_point(color = "orange") +
+  geom_text_repel(max.overlaps = 50) +  # Adjust the label position if needed
+  #geom_vline(xintercept = avg_un_p2s, linetype = "dashed") +
+  #geom_hline(yintercept = avg_epa_play, linetype = "dashed") +
+  labs(x = "Player Efficiency Rating (PER)", y = "Box Plus/Minus +/- (BPM)", title = "Fighting Illini Basketball 2020-21 BPM vs PER") +
+  #scale_y_continuous(limits = c(3, 12), breaks = seq(3, 12, by = 3)) +
+  #scale_x_continuous(limits = c(10, 30), breaks = seq(10, 30, by = 4)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+    legend.position = "none"
+  )
+
+illini_2020 = read.csv("C:\\Users\\imksy\\Documents\\illini20.csv")
+illini_2020 <- illini_2020 %>%
+  filter(MP >= 100)
+
+ggplot(illini_2020, aes(x = PER, y = BPM, label = Player, size = MP)) +
+  geom_point(color = "orange") +
+  geom_text_repel(max.overlaps = 50) +  # Adjust the label position if needed
+  #geom_vline(xintercept = avg_un_p2s, linetype = "dashed") +
+  #geom_hline(yintercept = avg_epa_play, linetype = "dashed") +
+  labs(x = "Player Efficiency Rating (PER)", y = "Box Plus/Minus +/- (BPM)", title = "Fighting Illini Basketball 2019-20 BPM vs PER") +
+  #scale_y_continuous(limits = c(3, 12), breaks = seq(3, 12, by = 3)) +
+  #scale_x_continuous(limits = c(10, 30), breaks = seq(10, 30, by = 4)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+    legend.position = "none"
+  )
+
+illini_2013 = read.csv("C:\\Users\\imksy\\Documents\\illini13.csv")
+illini_2013 <- illini_2013 %>%
+  filter(MP >= 100)
+
+ggplot(illini_2013, aes(x = PER, y = BPM, label = Player, size = MP)) +
+  geom_point(color = "orange") +
+  geom_text_repel(max.overlaps = 50) +  # Adjust the label position if needed
+  #geom_vline(xintercept = avg_un_p2s, linetype = "dashed") +
+  #geom_hline(yintercept = avg_epa_play, linetype = "dashed") +
+  labs(x = "Player Efficiency Rating (PER)", y = "Box Plus/Minus +/- (BPM)", title = "Fighting Illini Basketball 2012-13 BPM vs PER") +
+  #scale_y_continuous(limits = c(3, 12), breaks = seq(3, 12, by = 3)) +
+  #scale_x_continuous(limits = c(10, 30), breaks = seq(10, 30, by = 4)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+    legend.position = "none"
+  )
+
+cc_25 <- cor(illini_2025$PER, illini_2025$BPM, use = "complete.obs")
+cc_24 <- cor(illini_top8$PER, illini_top8$BPM, use = "complete.obs")
+cc_23 <- cor(illini_2023$PER, illini_2023$BPM, use = "complete.obs")
+cc_22 <- cor(illini_2022$PER, illini_2022$BPM, use = "complete.obs")
+cc_21 <- cor(illini_2021$PER, illini_2021$BPM, use = "complete.obs")
+cc_20 <- cor(illini_2020$PER, illini_2020$BPM, use = "complete.obs")
+cc_13 <- cor(illini_2013$PER, illini_2013$BPM, use = "complete.obs")
+
 
 #https://x.com/TotallyREALSpo1/status/1795319305883775223
