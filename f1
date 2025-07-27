@@ -1,0 +1,33 @@
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(lubridate)  # for time parsing
+
+# Load the CSV
+sprint_data <- read_csv("C:/Users/imksy/Downloads/f1/sprint_results.csv")
+
+# Clean and convert fastestLapTime to seconds
+sprint_data <- sprint_data %>%
+  mutate(
+    fastestLapSeconds = period_to_seconds(ms(fastestLapTime))
+  )
+ggplot(sprint_data, aes(x = fastestLap, y = fastestLapSeconds)) +
+  geom_point(aes(color = fastestLapSeconds), size = 3, alpha = 0.8) +
+  geom_smooth(method = "loess", se = FALSE, linetype = "dashed", color = "gray40") +
+  facet_wrap(~ raceId, scales = "free") +
+  scale_color_viridis_c(option = "C", direction = -1) +
+  labs(
+    title = "Fastest Lap Timing Across Sprint Races",
+    subtitle = "Each panel is a different sprint race (raceId)",
+    x = "Lap Number of Fastest Lap",
+    y = "Fastest Lap Time (seconds)",
+    color = "Lap Time (s)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    strip.text = element_text(face = "bold", size = 11),
+    panel.grid.major = element_line(color = "gray80"),
+    panel.grid.minor = element_line(color = "gray90"),
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+    plot.subtitle = element_text(size = 12, hjust = 0.5)
+  )
