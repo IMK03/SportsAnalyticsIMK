@@ -1,0 +1,46 @@
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(ggrepel)  # For better text labels
+library(scales)   # Optional: For nice axes formatting
+
+# Read CSV
+file_path <- "C:/Users/imksy/Downloads/tennis/Mens_Tennis_Grand_Slam_Winner.csv"
+tennis_data <- read_csv(file_path)
+
+# Count total wins and runner-ups
+runner_ups_stats <- tennis_data %>%
+  group_by(RUNNER_UP) %>%
+  summarise(Runner_Ups = n()) %>%
+  rename(Player = RUNNER_UP)
+
+wins_stats <- tennis_data %>%
+  group_by(WINNER) %>%
+  summarise(Wins = n()) %>%
+  rename(Player = WINNER)
+
+# Merge
+all_stats <- full_join(wins_stats, runner_ups_stats, by = "Player")
+
+# Custom theme for clean look
+my_theme <- theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 18, hjust = 0.5),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12)
+  )
+
+# Plot for all tournaments
+ggplot(all_stats, aes(x = Runner_Ups, y = Wins, label = Player)) +
+  geom_point(aes(color = Wins + Runner_Ups), size = 4, alpha = 0.7) +
+  geom_label_repel(size = 3, max.overlaps = 25) +
+  scale_color_viridis_c(option = "D", direction = -1) +
+  labs(
+    title = "Grand Slam Finals: Wins vs Runner-ups",
+    x = "# Runner-ups", y = "# Wins", color = "Total Finals"
+  ) +
+  my_theme + 
+  theme(
+    panel.grid.major = element_line(color = "gray80", size = 0.5),
+    panel.grid.minor = element_line(color = "gray90", size = 0.3)
+  )
